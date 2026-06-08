@@ -1711,6 +1711,30 @@ footer {
   font-weight: 800;
 }
 
+.fish-notifications {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(126, 143, 166, 0.34);
+}
+
+.fish-notifications strong {
+  color: #223149;
+  font-size: 13px;
+}
+
+.fish-notifications button,
+.fish-notifications span {
+  padding: 8px 9px;
+  color: #445268;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(174, 185, 200, 0.72);
+  border-radius: 7px;
+}
+
 .wall-music-player {
   position: fixed;
   right: 16px;
@@ -1727,6 +1751,24 @@ footer {
   border: 1px solid #8f9db2;
   border-radius: 9px;
   box-shadow: 0 16px 36px rgba(23, 40, 68, 0.24), inset 0 1px 0 #fff;
+}
+
+.wall-music-player.collapsed {
+  width: auto;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+.player-collapse {
+  justify-self: end;
+  width: 28px;
+  min-height: 24px;
+  padding: 0;
+  color: #536177;
+  background: linear-gradient(#fff, #dce4ef);
+  border: 1px solid #aeb9c8;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 .wall-music-player strong,
@@ -1761,6 +1803,29 @@ footer {
   border-radius: 999px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   cursor: pointer;
+}
+
+.ipod-controls-mini {
+  justify-content: center;
+  padding: 10px;
+  background: radial-gradient(circle, #f9fbff 0 43%, #cfd8e5 44% 100%);
+  border: 1px solid #9ba8b9;
+  border-radius: 999px;
+  box-shadow: inset 0 2px 5px rgba(23, 40, 68, 0.14);
+}
+
+.wall-music-player .ipod-controls-mini button {
+  min-width: 42px;
+  min-height: 42px;
+  color: #243247;
+  background: linear-gradient(#fff, #dce4ef);
+  border: 1px solid #aeb9c8;
+}
+
+.wall-music-player .ipod-controls-mini .mini-play {
+  min-width: 54px;
+  color: #fff;
+  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
 }
 
 .fish-dock-toggle {
@@ -1872,6 +1937,22 @@ footer {
   object-fit: cover;
 }
 
+.verified-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+  vertical-align: middle;
+  background: linear-gradient(#5ec7ff, #1677d2);
+  border: 1px solid #0c5fac;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 2px 5px rgba(22, 119, 210, 0.28);
+}
+
 .photo-drop {
   padding: 16px;
   color: #223149;
@@ -1953,6 +2034,20 @@ footer {
   border: 1px solid #8f9db2;
   border-radius: 8px;
   box-shadow: var(--shadow), inset 0 1px 0 #fff;
+}
+
+.fishpage-card {
+  min-height: 520px;
+}
+
+.fishpage-body {
+  display: grid;
+  gap: 18px;
+  padding: clamp(16px, 3vw, 28px);
+}
+
+.fishpage-body h2 {
+  font-size: clamp(34px, 6vw, 62px);
 }
 
 .pattern-stars .myspace-card {
@@ -2314,6 +2409,22 @@ footer {
   margin-top: 12px;
 }
 
+.follow-button.pulse {
+  animation: follow-pop 520ms ease both;
+}
+
+.danger-button {
+  min-height: 40px;
+  padding: 9px 14px;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(#ff8b87, #d43c37 52%, #a92320);
+  border: 1px solid #96211e;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+}
+
 .check-label {
   display: flex;
   align-items: center;
@@ -2344,6 +2455,68 @@ footer {
   box-shadow: 0 18px 38px rgba(23, 40, 68, 0.24), inset 0 1px 0 #fff;
   transform: translateX(-50%);
   animation: fish-toast-in 240ms ease both;
+}
+
+.post-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 9px;
+  color: #687488;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.post-route button,
+.fish-comment button {
+  color: #1e6ea8;
+  font: inherit;
+  font-weight: 950;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.fish-comments {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(126, 143, 166, 0.28);
+}
+
+.fish-comment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  color: #3f4b5f;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.54);
+  border: 1px solid rgba(174, 185, 200, 0.58);
+  border-radius: 7px;
+}
+
+.comment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.comment-form input {
+  min-height: 36px;
+}
+
+.comment-form button {
+  min-height: 36px;
+  padding: 7px 12px;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
+  border: 1px solid rgba(20, 80, 137, 0.85);
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 .fish-modal-backdrop {
@@ -2447,6 +2620,21 @@ footer {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
+  }
+}
+
+@keyframes follow-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.07);
+    box-shadow: 0 0 0 7px rgba(102, 185, 241, 0.2);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 

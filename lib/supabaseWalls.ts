@@ -14,6 +14,14 @@ export type SupabaseWallPost = {
   createdAt: string;
 };
 
+export type SupabaseWallComment = {
+  id: string;
+  postId: string;
+  authorId: string;
+  text: string;
+  createdAt: string;
+};
+
 export type SupabaseProfile = {
   id: string;
   name: string;
@@ -31,6 +39,7 @@ export type SupabaseProfile = {
   accentColor: string;
   fontStyle: string;
   layoutDensity: string;
+  verified: boolean;
   photos: string[];
 };
 
@@ -56,6 +65,7 @@ type ProfileRow = {
   accent_color: string | null;
   font_style: string | null;
   layout_density: string | null;
+  verified: boolean | null;
   password_hash?: string | null;
   photos: string[] | null;
   created_at?: string;
@@ -80,6 +90,15 @@ type PostRow = {
 type FollowRow = {
   follower_id: string;
   following_id: string;
+  created_at?: string;
+};
+
+type CommentRow = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  text: string;
+  created_at: string;
 };
 
 export const defaultWallProfile: SupabaseProfile = {
@@ -99,6 +118,7 @@ export const defaultWallProfile: SupabaseProfile = {
   accentColor: "#66b9f1",
   fontStyle: "lucida",
   layoutDensity: "cozy",
+  verified: true,
   photos: []
 };
 
@@ -134,6 +154,7 @@ function toProfile(row: ProfileRow): SupabaseProfile {
     accentColor: row.accent_color || "#66b9f1",
     fontStyle: row.font_style || "lucida",
     layoutDensity: row.layout_density || "cozy",
+    verified: Boolean(row.verified),
     photos: row.photos || []
   };
 }
@@ -156,6 +177,7 @@ function toProfileRow(profile: SupabaseProfile, passwordHash?: string) {
     accent_color: profile.accentColor,
     font_style: profile.fontStyle,
     layout_density: profile.layoutDensity,
+    verified: profile.verified,
     photos: profile.photos,
     ...(passwordHash ? { password_hash: passwordHash } : {})
   };
@@ -193,6 +215,16 @@ function toPostRow(post: SupabaseWallPost) {
     song_title: post.songTitle || null,
     song_artist: post.songArtist || null,
     song_src: post.songSrc || null
+  };
+}
+
+function toComment(row: CommentRow): SupabaseWallComment {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    authorId: row.author_id,
+    text: row.text,
+    createdAt: row.created_at
   };
 }
 
@@ -266,7 +298,8 @@ export async function updateWallProfile(id: string, profile: Partial<SupabasePro
     ...(profile.backgroundColor !== undefined ? { background_color: profile.backgroundColor } : {}),
     ...(profile.accentColor !== undefined ? { accent_color: profile.accentColor } : {}),
     ...(profile.fontStyle !== undefined ? { font_style: profile.fontStyle } : {}),
-    ...(profile.layoutDensity !== undefined ? { layout_density: profile.layoutDensity } : {})
+    ...(profile.layoutDensity !== undefined ? { layout_density: profile.layoutDensity } : {}),
+    ...(profile.verified !== undefined ? { verified: profile.verified } : {})
   };
   const response = await supabaseRest(`wall_profiles?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -306,6 +339,27 @@ export async function createWallPost(post: Omit<SupabaseWallPost, "id" | "create
   return toPost(rows[0]);
 }
 
+export async function listWallComments() {
+  const response = await supabaseRest("wall_comments?select=*&order=created_at.asc");
+  const rows = (await response.json()) as CommentRow[];
+  return rows.map(toComment);
+}
+
+export async function createWallComment(comment: Omit<SupabaseWallComment, "id" | "createdAt">) {
+  const response = await supabaseRest("wall_comments", {
+    method: "POST",
+    body: JSON.stringify({
+      id: createId(),
+      post_id: comment.postId,
+      author_id: comment.authorId,
+      text: comment.text,
+      created_at: new Date().toISOString()
+    })
+  });
+  const rows = (await response.json()) as CommentRow[];
+  return toComment(rows[0]);
+}
+
 export async function listWallFollows() {
   const response = await supabaseRest("wall_follows?select=*");
   const rows = (await response.json()) as FollowRow[];
@@ -337,6 +391,37 @@ export async function unfollowWallProfile(followerId: string, followingId: strin
       headers: { Prefer: "return=minimal" }
     }
   );
+}
+
+export async function deleteWallProfile(id: string) {
+  const posts = await listWallPosts();
+  const relatedPostIds = posts
+    .filter((post) => post.authorId === id || post.targetId === id || post.collaboratorId === id)
+    .map((post) => post.id);
+
+  for (const postId of relatedPostIds) {
+    await supabaseRest(`wall_comments?post_id=eq.${encodeURIComponent(postId)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+  }
+
+  await supabaseRest(`wall_comments?author_id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
+  await supabaseRest(
+    `wall_posts?or=(author_id.eq.${encodeURIComponent(id)},target_id.eq.${encodeURIComponent(id)},collaborator_id.eq.${encodeURIComponent(id)})`,
+    { method: "DELETE", headers: { Prefer: "return=minimal" } }
+  );
+  await supabaseRest(
+    `wall_follows?or=(follower_id.eq.${encodeURIComponent(id)},following_id.eq.${encodeURIComponent(id)})`,
+    { method: "DELETE", headers: { Prefer: "return=minimal" } }
+  );
+  await supabaseRest(`wall_profiles?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
 }
 
 export async function uploadWallImage(file: File) {

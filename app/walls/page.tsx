@@ -19,6 +19,14 @@ type WallPost = {
   createdAt: string;
 };
 
+type WallComment = {
+  id: string;
+  postId: string;
+  authorId: string;
+  text: string;
+  createdAt: string;
+};
+
 type Profile = {
   id: string;
   name: string;
@@ -36,6 +44,7 @@ type Profile = {
   accentColor: string;
   fontStyle: string;
   layoutDensity: string;
+  verified: boolean;
   photos: string[];
 };
 
@@ -103,6 +112,7 @@ function normalizeHandle(handle: string) {
 export default function WallsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<WallPost[]>([]);
+  const [comments, setComments] = useState<WallComment[]>([]);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [activeProfileId, setActiveProfileId] = useState("");
   const [viewProfileId, setViewProfileId] = useState("");
@@ -117,6 +127,9 @@ export default function WallsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [newFishOpen, setNewFishOpen] = useState(false);
   const [fishType, setFishType] = useState<"text" | "image" | "song">("text");
+  const [showFishPage, setShowFishPage] = useState(true);
+  const [playerCollapsed, setPlayerCollapsed] = useState(false);
+  const [followPulse, setFollowPulse] = useState(false);
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
@@ -138,6 +151,60 @@ export default function WallsPage() {
         : [],
     [posts, viewProfile]
   );
+  const fishPagePosts = useMemo(
+    () =>
+      posts
+        .filter((post) => post.authorId !== activeProfile?.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 24),
+    [activeProfile, posts]
+  );
+  const commentsByPost = useMemo(() => {
+    return comments.reduce<Record<string, WallComment[]>>((groups, comment) => {
+      groups[comment.postId] = [...(groups[comment.postId] || []), comment];
+      return groups;
+    }, {});
+  }, [comments]);
+  const notifications = useMemo(() => {
+    if (!activeProfile) return [];
+
+    const followNotes = follows
+      .filter((follow) => follow.followingId === activeProfile.id)
+      .map((follow) => {
+        const follower = profiles.find((profile) => profile.id === follow.followerId);
+        return {
+          id: `follow-${follow.followerId}`,
+          text: `${follower?.name || "Jemand"} folgt dir jetzt.`,
+          profileId: follow.followerId
+        };
+      });
+    const collabNotes = posts
+      .filter((post) => post.collaboratorId === activeProfile.id && post.authorId !== activeProfile.id)
+      .map((post) => {
+        const author = profiles.find((profile) => profile.id === post.authorId);
+        return {
+          id: `collab-${post.id}`,
+          text: `${author?.name || "Jemand"} hat dich in einem .fish markiert.`,
+          profileId: post.authorId
+        };
+      });
+    const commentNotes = comments
+      .filter((comment) => {
+        const post = posts.find((item) => item.id === comment.postId);
+        return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id;
+      })
+      .slice(-8)
+      .map((comment) => {
+        const author = profiles.find((profile) => profile.id === comment.authorId);
+        return {
+          id: `comment-${comment.id}`,
+          text: `${author?.name || "Jemand"} hat dein .fish kommentiert.`,
+          profileId: comment.authorId
+        };
+      });
+
+    return [...commentNotes, ...collabNotes, ...followNotes].slice(0, 10);
+  }, [activeProfile, comments, follows, posts, profiles]);
   const mutualFriends = useMemo(() => {
     if (!viewProfile) return [];
 
@@ -204,14 +271,17 @@ export default function WallsPage() {
         fetch("/api/walls/profiles", { cache: "no-store" }),
         fetch("/api/walls/posts", { cache: "no-store" })
       ]);
+      const commentsResponse = await fetch("/api/walls/comments", { cache: "no-store" });
       const profilesData = await profilesResponse.json();
       const postsData = await postsResponse.json();
+      const commentsData = await commentsResponse.json();
       const nextProfiles = profilesData.profiles || [];
       const nextActiveProfileId = profilesData.activeProfileId || "";
 
       setProfiles(nextProfiles);
       setFollows(profilesData.follows || []);
       setPosts(postsData.posts || []);
+      setComments(commentsData.comments || []);
       setActiveProfileId(nextActiveProfileId);
       setViewProfileId((currentId) => {
         if (currentId && nextProfiles.some((profile: Profile) => profile.id === currentId)) return currentId;
@@ -350,6 +420,7 @@ export default function WallsPage() {
       accentColor: String(formData.get("accentColor") || selectedTheme.accent),
       fontStyle: String(formData.get("fontStyle") || "lucida"),
       layoutDensity: String(formData.get("layoutDensity") || "cozy"),
+      verified: false,
       photos: []
     };
 
@@ -406,6 +477,7 @@ export default function WallsPage() {
       accentColor: String(formData.get("accentColor") || editableProfile.accentColor),
       fontStyle: String(formData.get("fontStyle") || editableProfile.fontStyle),
       layoutDensity: String(formData.get("layoutDensity") || editableProfile.layoutDensity),
+      verified: isAdmin ? formData.get("verified") === "on" : editableProfile.verified,
       glitter: formData.get("glitter") === "on"
     };
 
@@ -556,8 +628,64 @@ export default function WallsPage() {
           ? currentFollows
           : [...currentFollows, nextFollow]
     );
+    setFollowPulse(true);
+    window.setTimeout(() => setFollowPulse(false), 520);
     notify(isFollowingViewProfile ? "Nicht mehr gefolgt." : `${viewProfile.name} wird gefolgt.`);
     await loadWalls(false);
+  }
+
+  async function addComment(event: FormEvent<HTMLFormElement>, postId: string) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const text = String(formData.get("comment") || "").trim();
+
+    if (!text) return;
+
+    const response = await fetch("/api/walls/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId, text })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      notify(data.message || "Kommentar konnte nicht gespeichert werden.");
+      return;
+    }
+
+    form.reset();
+    notify("Kommentar gespeichert.");
+    await loadWalls(false);
+  }
+
+  async function deleteProfile() {
+    if (!isAdmin || !viewProfile || viewProfile.id === "kimon") return;
+    const ok = window.confirm(`${viewProfile.name} wirklich loeschen?`);
+    if (!ok) return;
+
+    const response = await fetch("/api/walls/profiles", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profileId: viewProfile.id })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      notify(data.message || "Profil konnte nicht geloescht werden.");
+      return;
+    }
+
+    notify("Profil geloescht.");
+    setEditProfileOpen(false);
+    setViewProfileId(activeProfile?.id || "");
+    await loadWalls(false);
+  }
+
+  function openProfile(profileId?: string) {
+    if (!profileId) return;
+    setViewProfileId(profileId);
+    setShowFishPage(false);
   }
 
   function toggleMusic(src?: string) {
@@ -588,6 +716,86 @@ export default function WallsPage() {
       "--wall-a": viewProfile.accentColor,
       "--wall-b": viewProfile.backgroundColor
     } as CSSProperties);
+
+  function renderVerified(profile?: Profile | null) {
+    if (!profile?.verified) return null;
+
+    return (
+      <span className="verified-badge" title="Diese Person ist verifiziert." aria-label="Diese Person ist verifiziert.">
+        ✓
+      </span>
+    );
+  }
+
+  function renderPost(post: WallPost) {
+    const author = profiles.find((profile) => profile.id === post.authorId);
+    const target = profiles.find((profile) => profile.id === post.targetId);
+    const collaborator = profiles.find((profile) => profile.id === post.collaboratorId);
+    const postComments = commentsByPost[post.id] || [];
+    const isOnOtherProfile = author && target && author.id !== target.id;
+
+    return (
+      <article
+        className={`wall-post post-${post.postType}`}
+        key={post.id}
+        style={{ "--pin-color": post.color } as CSSProperties}
+      >
+        <div className="post-route">
+          <button type="button" onClick={() => openProfile(author?.id)}>
+            {author?.name || "Unbekannt"} {renderVerified(author)}
+          </button>
+          {isOnOtherProfile && (
+            <>
+              <span>auf</span>
+              <button type="button" onClick={() => openProfile(target?.id)}>
+                {target?.name || "Profil"} {renderVerified(target)}
+              </button>
+            </>
+          )}
+          {collaborator && (
+            <>
+              <span>mit</span>
+              <button type="button" onClick={() => openProfile(collaborator.id)}>
+                {collaborator.name} {renderVerified(collaborator)}
+              </button>
+            </>
+          )}
+        </div>
+        <strong>{post.sticker}</strong>
+        {post.postType === "image" && post.mediaUrl && (
+          <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
+        )}
+        {post.postType === "song" && (
+          <div className="post-song">
+            <b>
+              {post.songTitle} - {post.songArtist}
+            </b>
+            <button onClick={() => toggleMusic(post.songSrc)}>Abspielen</button>
+          </div>
+        )}
+        <p>{post.text}</p>
+        <span>{new Date(post.createdAt).toLocaleString("de-DE")}</span>
+
+        <div className="fish-comments">
+          {postComments.map((comment) => {
+            const commentAuthor = profiles.find((profile) => profile.id === comment.authorId);
+            return (
+              <div className="fish-comment" key={comment.id}>
+                <button type="button" onClick={() => openProfile(commentAuthor?.id)}>
+                  {commentAuthor?.name || "Unbekannt"} {renderVerified(commentAuthor)}
+                </button>
+                <span>{comment.text}</span>
+              </div>
+            );
+          })}
+          <form className="comment-form" onSubmit={(event) => addComment(event, post.id)}>
+            <input name="comment" placeholder="Kommentieren..." />
+            <button type="submit">Senden</button>
+          </form>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <main className="walls-page">
@@ -729,15 +937,30 @@ export default function WallsPage() {
 
       {activeProfile && viewProfile && (
         <>
-          <aside className="wall-music-player">
-            <strong>.fish Player</strong>
-            <span>
-              {tracks[activeTrack].title} - {tracks[activeTrack].artist}
-            </span>
-            <div>
-              <button onClick={() => toggleMusic()}>{isPlaying ? "Pause" : "Play"}</button>
-              <button onClick={nextTrack}>Next</button>
-            </div>
+          <aside className={`wall-music-player ${playerCollapsed ? "collapsed" : ""}`}>
+            <button
+              className="player-collapse"
+              type="button"
+              onClick={() => setPlayerCollapsed((value) => !value)}
+              aria-label={playerCollapsed ? "Player ausklappen" : "Player einklappen"}
+            >
+              {playerCollapsed ? "▲" : "▼"}
+            </button>
+            {!playerCollapsed && (
+              <>
+                <strong>.fish Player</strong>
+                <span>
+                  {tracks[activeTrack].title} - {tracks[activeTrack].artist}
+                </span>
+                <div className="ipod-controls-mini">
+                  <button onClick={nextTrack}>◀</button>
+                  <button className="mini-play" onClick={() => toggleMusic()}>
+                    {isPlaying ? "Ⅱ" : "▶"}
+                  </button>
+                  <button onClick={nextTrack}>▶</button>
+                </div>
+              </>
+            )}
           </aside>
 
           <button className="fish-dock-toggle" type="button" onClick={() => setSideMenuOpen((value) => !value)}>
@@ -770,7 +993,7 @@ export default function WallsPage() {
                     value={adminPassword}
                     onChange={(event) => setAdminPassword(event.target.value)}
                     type="password"
-                    placeholder="louki22"
+                    placeholder="Admin-Passwort"
                   />
                 </label>
                 <button className="secondary-button">Admin Login</button>
@@ -779,6 +1002,18 @@ export default function WallsPage() {
             <button className="secondary-button" type="button" onClick={logout}>
               Ausloggen
             </button>
+            <div className="fish-notifications">
+              <strong>Benachrichtigungen</strong>
+              {notifications.length ? (
+                notifications.map((note) => (
+                  <button type="button" key={note.id} onClick={() => openProfile(note.profileId)}>
+                    {note.text}
+                  </button>
+                ))
+              ) : (
+                <span>Noch nichts Neues.</span>
+              )}
+            </div>
           </aside>
 
           <section
@@ -790,6 +1025,9 @@ export default function WallsPage() {
           >
             <aside className="wall-directory">
               <p className="eyebrow">Alle .fish Profile</p>
+              <button className={showFishPage ? "active" : ""} onClick={() => setShowFishPage(true)}>
+                .fishpage
+              </button>
               <input
                 className="fish-search"
                 value={profileSearch}
@@ -800,14 +1038,34 @@ export default function WallsPage() {
                 <button
                   className={profile.id === viewProfile.id ? "active" : ""}
                   key={profile.id}
-                  onClick={() => setViewProfileId(profile.id)}
+                  onClick={() => openProfile(profile.id)}
                 >
-                  {profile.name}
+                  {profile.name} {renderVerified(profile)}
                 </button>
               ))}
               {!visibleProfiles.length && <p>Kein .fish gefunden.</p>}
             </aside>
 
+            {showFishPage ? (
+              <article className="myspace-card fishpage-card">
+                <div className="myspace-topbar">
+                  <span />
+                  <span />
+                  <span />
+                  <strong>.fishpage</strong>
+                </div>
+                <div className="fishpage-body">
+                  <div>
+                    <p className="eyebrow">Neueste .fishs</p>
+                    <h2>.fishpage</h2>
+                    <p>Hier siehst du die neuesten .fishs von allen anderen in zeitlicher Reihenfolge.</p>
+                  </div>
+                  <div className="wall-posts">
+                    {fishPagePosts.length ? fishPagePosts.map((post) => renderPost(post)) : <p>Noch keine fremden .fishs da.</p>}
+                  </div>
+                </div>
+              </article>
+            ) : (
             <article className="myspace-card">
               <div className="myspace-topbar">
                 <span />
@@ -822,16 +1080,16 @@ export default function WallsPage() {
                     {viewProfile.avatar ? <img src={viewProfile.avatar} alt={viewProfile.name} /> : viewProfile.name[0]}
                   </div>
                   <h2>{viewProfile.name}</h2>
-                  <p>@{viewProfile.handle}</p>
-                  <div className="status-pill">Status: {viewProfile.mood}</div>
-                  <div className="profile-song">Profil-Song: {viewProfile.song}</div>
+                  <p>
+                    @{viewProfile.handle} {renderVerified(viewProfile)}
+                  </p>
                   {editableProfile && (
                     <button className="secondary-button profile-edit-button" onClick={() => setEditProfileOpen(true)}>
                       Profil bearbeiten
                     </button>
                   )}
                   {activeProfile.id !== viewProfile.id && (
-                    <button className="aqua-button follow-button" onClick={toggleFollow}>
+                    <button className={`aqua-button follow-button ${followPulse ? "pulse" : ""}`} onClick={toggleFollow}>
                       {isFollowingViewProfile ? "Gefolgt" : "Folgen"}
                     </button>
                   )}
@@ -848,11 +1106,11 @@ export default function WallsPage() {
                     <div className="top-friends">
                       {mutualFriends.length ? (
                         mutualFriends.map((friend) => (
-                          <button key={friend.id} onClick={() => setViewProfileId(friend.id)}>
+                          <button key={friend.id} onClick={() => openProfile(friend.id)}>
                             <span className="mini-avatar">
                               {friend.avatar ? <img src={friend.avatar} alt="" /> : friend.name[0]}
                             </span>
-                            <span>{friend.name}</span>
+                            <span>{friend.name} {renderVerified(friend)}</span>
                           </button>
                         ))
                       ) : (
@@ -870,36 +1128,7 @@ export default function WallsPage() {
                     </div>
                     <div className="wall-posts">
                       {wallPosts.length ? (
-                        wallPosts.map((post) => {
-                          const author = profiles.find((profile) => profile.id === post.authorId);
-                          const collaborator = profiles.find((profile) => profile.id === post.collaboratorId);
-                          return (
-                            <article
-                              className={`wall-post post-${post.postType}`}
-                              key={post.id}
-                              style={{ "--pin-color": post.color } as CSSProperties}
-                            >
-                              <strong>{post.sticker}</strong>
-                              {post.postType === "image" && post.mediaUrl && (
-                                <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-Pin"} />
-                              )}
-                              {post.postType === "song" && (
-                                <div className="post-song">
-                                  <b>
-                                    {post.songTitle} - {post.songArtist}
-                                  </b>
-                                  <button onClick={() => toggleMusic(post.songSrc)}>Abspielen</button>
-                                </div>
-                              )}
-                              <p>{post.text}</p>
-                              <span>
-                                Von {author?.name || "Unbekannt"}
-                                {collaborator ? ` · Collab mit ${collaborator.name}` : ""} ·{" "}
-                                {new Date(post.createdAt).toLocaleString("de-DE")}
-                              </span>
-                            </article>
-                          );
-                        })
+                        wallPosts.map((post) => renderPost(post))
                       ) : (
                         <p>Noch nichts angepinnt. Sei die erste Person.</p>
                       )}
@@ -908,6 +1137,7 @@ export default function WallsPage() {
                 </div>
               </div>
             </article>
+            )}
           </section>
 
           {newFishOpen && (
@@ -1031,14 +1261,6 @@ export default function WallsPage() {
                       <input name="headline" defaultValue={editableProfile.headline} />
                     </label>
                     <label>
-                      Status
-                      <input name="mood" defaultValue={editableProfile.mood} />
-                    </label>
-                    <label>
-                      Profil-Song
-                      <input name="song" defaultValue={editableProfile.song} />
-                    </label>
-                    <label>
                       Bio
                       <textarea name="bio" defaultValue={editableProfile.bio} />
                     </label>
@@ -1094,8 +1316,19 @@ export default function WallsPage() {
                       <input name="glitter" type="checkbox" defaultChecked={editableProfile.glitter} />
                       Glitzer-Modus
                     </label>
+                    {isAdmin && (
+                      <label className="check-label">
+                        <input name="verified" type="checkbox" defaultChecked={editableProfile.verified} />
+                        Blauer Verifizierungshaken
+                      </label>
+                    )}
                     <div className="modal-actions">
                       <button className="aqua-button">Speichern</button>
+                      {isAdmin && editableProfile.id !== "kimon" && (
+                        <button className="danger-button" type="button" onClick={deleteProfile}>
+                          Profil loeschen
+                        </button>
+                      )}
                       <button className="secondary-button" type="button" onClick={() => setEditProfileOpen(false)}>
                         Schliessen
                       </button>

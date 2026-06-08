@@ -30,8 +30,17 @@ export async function POST(request: Request) {
     const follow = await followWallProfile(activeProfileId, followingId);
     return NextResponse.json({ ok: true, follow, message: "Gefolgt." });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isPolicyError =
+      message.includes("row-level security") || message.includes("42501") || message.includes("wall_follows");
+
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Folgen hat nicht geklappt." },
+      {
+        ok: false,
+        message: isPolicyError
+          ? "Supabase blockiert Folgen noch. Bitte die aktuelle supabase-walls-setup.sql im Supabase SQL Editor ausfuehren."
+          : message || "Folgen hat nicht geklappt."
+      },
       { status: 500 }
     );
   }
@@ -53,8 +62,17 @@ export async function DELETE(request: Request) {
     await unfollowWallProfile(activeProfileId, followingId);
     return NextResponse.json({ ok: true, message: "Nicht mehr gefolgt." });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isPolicyError =
+      message.includes("row-level security") || message.includes("42501") || message.includes("wall_follows");
+
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Entfolgen hat nicht geklappt." },
+      {
+        ok: false,
+        message: isPolicyError
+          ? "Supabase blockiert Folgen noch. Bitte die aktuelle supabase-walls-setup.sql im Supabase SQL Editor ausfuehren."
+          : message || "Entfolgen hat nicht geklappt."
+      },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createWallProfile,
+  deleteWallProfile,
   findWallProfileByHandle,
   getWallProfile,
   listWallFollows,
@@ -43,8 +44,17 @@ export async function POST(request: Request) {
     await setWallSession(createdProfile.id);
     return NextResponse.json({ ok: true, profile: createdProfile, message: "Pinnwand erstellt." });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isPolicyError =
+      message.includes("row-level security") || message.includes("42501") || message.includes("wall_profiles");
+
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Pinnwand konnte nicht gespeichert werden." },
+      {
+        ok: false,
+        message: isPolicyError
+          ? "Supabase blockiert .fish Profile noch. Bitte supabase-fish-sofort-fix.sql im Supabase SQL Editor ausfuehren."
+          : message || ".fish konnte nicht gespeichert werden."
+      },
       { status: 500 }
     );
   }
@@ -72,8 +82,40 @@ export async function PATCH(request: Request) {
     const profile = await updateWallProfile(targetProfileId, profilePayload);
     return NextResponse.json({ ok: true, profile, message: "Pinnwand aktualisiert." });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isPolicyError =
+      message.includes("row-level security") || message.includes("42501") || message.includes("wall_profiles");
+
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Pinnwand konnte nicht aktualisiert werden." },
+      {
+        ok: false,
+        message: isPolicyError
+          ? "Supabase blockiert .fish Profile noch. Bitte supabase-fish-sofort-fix.sql im Supabase SQL Editor ausfuehren."
+          : message || ".fish konnte nicht aktualisiert werden."
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const admin = await isAdmin();
+  const { profileId } = await request.json().catch(() => ({ profileId: "" }));
+
+  if (!admin) {
+    return NextResponse.json({ ok: false, message: "Nur Admins koennen Profile loeschen." }, { status: 403 });
+  }
+
+  if (!profileId || profileId === "kimon") {
+    return NextResponse.json({ ok: false, message: "Dieses Profil kann nicht geloescht werden." }, { status: 400 });
+  }
+
+  try {
+    await deleteWallProfile(profileId);
+    return NextResponse.json({ ok: true, message: "Profil geloescht." });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error instanceof Error ? error.message : "Profil konnte nicht geloescht werden." },
       { status: 500 }
     );
   }

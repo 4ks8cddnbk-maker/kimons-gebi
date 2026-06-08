@@ -53,8 +53,17 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, post, message: "An die Wand gepinnt." });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isPolicyError =
+      message.includes("row-level security") || message.includes("42501") || message.includes("wall_posts");
+
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Pin konnte nicht gespeichert werden." },
+      {
+        ok: false,
+        message: isPolicyError
+          ? "Supabase blockiert neue .fish noch. Bitte die aktuelle supabase-walls-setup.sql im Supabase SQL Editor ausfuehren."
+          : message || ".fish konnte nicht gespeichert werden."
+      },
       { status: 500 }
     );
   }
