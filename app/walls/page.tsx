@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type WallPost = {
   id: string;
@@ -27,22 +27,10 @@ type Profile = {
   photos: string[];
 };
 
-const defaultProfiles: Profile[] = [
-  {
-    id: "kimon",
-    name: "Kimon",
-    handle: "birthday-host",
-    avatar: "",
-    bio: "Host der 23. Geburtstagsnacht. Hier darf alles angepinnt werden, was später lustig ist.",
-    mood: "bereit fuer Karaoke",
-    song: "Moment - C4RL",
-    theme: "blue",
-    pattern: "aqua",
-    stickerPack: "party",
-    headline: "Willkommen auf Kimons Pinnwand",
-    glitter: true,
-    photos: []
-  }
+const tracks = [
+  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
+  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
+  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
 ];
 
 const stickerOptions = [
@@ -83,30 +71,59 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeHandle(handle: string) {
+  return handle
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function WallsPage() {
-  const [profiles, setProfiles] = useState<Profile[]>(defaultProfiles);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<WallPost[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState(defaultProfiles[0].id);
-  const [viewProfileId, setViewProfileId] = useState(defaultProfiles[0].id);
+  const [activeProfileId, setActiveProfileId] = useState("");
+  const [viewProfileId, setViewProfileId] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [activeTrack, setActiveTrack] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0];
-  const viewProfile = profiles.find((profile) => profile.id === viewProfileId) || profiles[0];
+  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
+  const viewProfile =
+    profiles.find((profile) => profile.id === viewProfileId) || activeProfile || profiles.find(Boolean) || null;
   const wallPosts = useMemo(
-    () => posts.filter((post) => post.targetId === viewProfile.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [posts, viewProfile.id]
+    () =>
+      viewProfile
+        ? posts
+            .filter((post) => post.targetId === viewProfile.id)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        : [],
+    [posts, viewProfile]
   );
-  const topFriends = profiles.filter((profile) => profile.id !== viewProfile.id).slice(0, 6);
+  const topFriends = viewProfile ? profiles.filter((profile) => profile.id !== viewProfile.id).slice(0, 6) : [];
 
   useEffect(() => {
     loadWalls();
   }, []);
 
-  async function loadWalls() {
-    setLoading(true);
+  useEffect(() => {
+    if (!activeProfileId) return;
+
+    const interval = window.setInterval(() => {
+      loadWalls(false);
+    }, 8000);
+
+    return () => window.clearInterval(interval);
+  }, [activeProfileId]);
+
+  async function loadWalls(showSpinner = true) {
+    if (showSpinner) setLoading(true);
 
     try {
       const [profilesResponse, postsResponse] = await Promise.all([
@@ -115,20 +132,24 @@ export default function WallsPage() {
       ]);
       const profilesData = await profilesResponse.json();
       const postsData = await postsResponse.json();
-      const nextProfiles = profilesData.profiles?.length ? profilesData.profiles : defaultProfiles;
+      const nextProfiles = profilesData.profiles || [];
+      const nextActiveProfileId = profilesData.activeProfileId || "";
 
       setProfiles(nextProfiles);
       setPosts(postsData.posts || []);
-      setActiveProfileId(profilesData.activeProfileId || nextProfiles[0].id);
-      setViewProfileId((currentId) => nextProfiles.find((profile: Profile) => profile.id === currentId)?.id || nextProfiles[0].id);
+      setActiveProfileId(nextActiveProfileId);
+      setViewProfileId((currentId) => {
+        if (currentId && nextProfiles.some((profile: Profile) => profile.id === currentId)) return currentId;
+        return nextActiveProfileId || "";
+      });
 
       if (!profilesResponse.ok || !postsResponse.ok) {
-        setStatus(profilesData.message || postsData.message || "Supabase ist noch nicht fertig eingerichtet.");
+        setStatus(profilesData.message || postsData.message || "Pinnwände konnten nicht geladen werden.");
       }
     } catch {
       setStatus("Pinnwände konnten nicht geladen werden.");
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }
 
@@ -156,7 +177,7 @@ export default function WallsPage() {
     const response = await fetch("/api/walls/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ handle: loginHandle, password: loginPassword })
+      body: JSON.stringify({ handle: normalizeHandle(loginHandle), password: loginPassword })
     });
     const data = await response.json();
 
@@ -165,17 +186,18 @@ export default function WallsPage() {
       return;
     }
 
-    setActiveProfileId(data.activeProfileId);
-    setViewProfileId(data.activeProfileId);
     setLoginHandle("");
     setLoginPassword("");
     setStatus("Eingeloggt.");
+    await loadWalls();
   }
 
   async function logout() {
     await fetch("/api/walls/login", { method: "DELETE" });
-    setActiveProfileId(profiles[0]?.id || defaultProfiles[0].id);
+    setActiveProfileId("");
+    setViewProfileId("");
     setStatus("Ausgeloggt.");
+    await loadWalls();
   }
 
   async function createProfile(event: FormEvent<HTMLFormElement>) {
@@ -184,11 +206,15 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const file = formData.get("avatar");
     const name = String(formData.get("name") || "").trim();
+    const handle = normalizeHandle(String(formData.get("handle") || name));
     const password = String(formData.get("password") || "");
 
-    if (!name || !password) return;
+    if (!name || !handle || !password) {
+      setStatus("Bitte Name, Nutzername und Passwort eintragen.");
+      return;
+    }
 
-    setStatus("Pinnwand wird gespeichert...");
+    setStatus("Account wird erstellt...");
 
     let avatar = "";
 
@@ -205,7 +231,7 @@ export default function WallsPage() {
     const profile: Profile = {
       id: createId(),
       name,
-      handle: String(formData.get("handle") || name.toLowerCase().replace(/\s+/g, "-")).replace(/^@/, ""),
+      handle,
       avatar,
       bio: String(formData.get("bio") || "Noch keine Bio, aber bestimmt eine starke Pinnwand."),
       mood: String(formData.get("mood") || "online"),
@@ -226,15 +252,13 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Pinnwand konnte nicht gespeichert werden.");
+      setStatus(data.message || "Account konnte nicht gespeichert werden.");
       return;
     }
 
-    setProfiles((currentProfiles) => [...currentProfiles, data.profile]);
-    setActiveProfileId(data.profile.id);
-    setViewProfileId(data.profile.id);
-    setStatus("Pinnwand erstellt.");
+    setStatus("Account erstellt und eingeloggt.");
     form.reset();
+    await loadWalls();
   }
 
   async function uploadPhotos(event: ChangeEvent<HTMLInputElement>) {
@@ -245,21 +269,17 @@ export default function WallsPage() {
 
     try {
       const data = await uploadFiles(files);
-
-      if (data.profile) {
-        setProfiles((currentProfiles) =>
-          currentProfiles.map((profile) => (profile.id === data.profile?.id ? data.profile : profile))
-        );
-      }
-
       setStatus(data.message || "Bild(er) auf deine Pinnwand gelegt.");
       event.target.value = "";
+      await loadWalls(false);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
     }
   }
 
   async function saveStyle(event: FormEvent<HTMLFormElement>) {
+    if (!activeProfile) return;
+
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     setStatus("Style wird gespeichert...");
@@ -287,14 +307,13 @@ export default function WallsPage() {
       return;
     }
 
-    setProfiles((currentProfiles) =>
-      currentProfiles.map((profile) => (profile.id === data.profile.id ? data.profile : profile))
-    );
-    setViewProfileId(data.profile.id);
     setStatus("Style gespeichert.");
+    await loadWalls(false);
   }
 
   async function pinPost(event: FormEvent<HTMLFormElement>) {
+    if (!viewProfile) return;
+
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -320,18 +339,52 @@ export default function WallsPage() {
       return;
     }
 
-    setPosts((currentPosts) => [data.post, ...currentPosts]);
     setStatus(`Auf ${viewProfile.name}s Pinnwand gepinnt.`);
     form.reset();
+    await loadWalls(false);
   }
+
+  function toggleMusic() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      return;
+    }
+
+    audio.pause();
+    setIsPlaying(false);
+  }
+
+  function nextTrack() {
+    setActiveTrack((currentTrack) => (currentTrack + 1) % tracks.length);
+  }
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.load();
+
+    if (isPlaying) {
+      audio.play().catch(() => setIsPlaying(false));
+    }
+  }, [activeTrack, isPlaying]);
 
   return (
     <main className="walls-page">
+      <audio
+        ref={audioRef}
+        src={tracks[activeTrack].src}
+        onEnded={nextTrack}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+      />
       <nav className="topbar" aria-label="Pinnwand Navigation">
         <div>
           <a href="/">Zur Partyseite</a>
-          <a href="#create">Pinnwand erstellen</a>
-          <a href="#wall">Wand ansehen</a>
+          {activeProfile && <a href="#wall">Pinnwände</a>}
         </div>
       </nav>
 
@@ -345,304 +398,345 @@ export default function WallsPage() {
           <p className="eyebrow">KimonSpace</p>
           <h1>Pinnwände</h1>
           <p className="hero-copy">
-            Erstell dir eine kleine Retro-Pinnwand, lade Bilder hoch, setz deinen Status und pinne anderen Leuten
-            Nachrichten auf die Wand.
+            Retro-Profile, Fotos, Pins und ein bisschen MySpace-Gefühl. Erst einloggen oder registrieren, dann
+            öffnet sich der Pinnwand-Bereich.
           </p>
         </div>
       </section>
 
-      <section id="create" className="section walls-layout">
-        <form className="snow-window form wall-create" onSubmit={createProfile}>
-          <p className="eyebrow">Neues Profil</p>
-          <h2>Pinnwand erstellen</h2>
-          <label>
-            Name
-            <input name="name" required placeholder="Dein Name" />
-          </label>
-          <label>
-            Nutzername
-            <input name="handle" placeholder="z. B. louki2003" />
-          </label>
-          <label>
-            Passwort
-            <input name="password" type="password" required placeholder="Nicht dein wichtiges Passwort nutzen" />
-          </label>
-          <label>
-            Profilbild
-            <input name="avatar" type="file" accept="image/*" />
-          </label>
-          <label>
-            Status
-            <input name="mood" placeholder="z. B. bereit fuer Karaoke" />
-          </label>
-          <label>
-            Profil-Song
-            <input name="song" placeholder="Dein Song des Abends" />
-          </label>
-          <label>
-            Überschrift
-            <input name="headline" placeholder="z. B. Loukis Ecke im Internet" />
-          </label>
-          <label>
-            Style
-            <select name="theme" defaultValue="blue">
-              {themeOptions.map((theme) => (
-                <option value={theme.value} key={theme.value}>
-                  {theme.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Muster
-            <select name="pattern" defaultValue="aqua">
-              {patternOptions.map((pattern) => (
-                <option value={pattern.value} key={pattern.value}>
-                  {pattern.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Sticker-Pack
-            <select name="stickerPack" defaultValue="party">
-              {stickerPackOptions.map((pack) => (
-                <option value={pack.value} key={pack.value}>
-                  {pack.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="check-label">
-            <input name="glitter" type="checkbox" defaultChecked />
-            Glitzer-Modus aktivieren
-          </label>
-          <label>
-            Kurzer Text
-            <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
-          </label>
-          <button className="aqua-button">Pinnwand speichern</button>
-          {status && <p className="form-message done">{status}</p>}
-        </form>
-
-        <div className="snow-window wall-switcher">
-          <p className="eyebrow">Account</p>
-          <h2>Anmelden</h2>
-          <form className="form compact wall-login" onSubmit={login}>
-            <label>
-              Nutzername
-              <input value={loginHandle} onChange={(event) => setLoginHandle(event.target.value)} placeholder="dein Nutzername" />
-            </label>
-            <label>
-              Passwort
-              <input
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                type="password"
-                placeholder="dein Passwort"
-              />
-            </label>
-            <button className="aqua-button">Einloggen</button>
-            <button className="secondary-button" type="button" onClick={logout}>
-              Ausloggen
+      <section className="section walls-auth">
+        <div className="snow-window">
+          <div className="auth-tabs">
+            <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
+              Einloggen
             </button>
-          </form>
-          <p className="eyebrow">Aktiv</p>
-          {loading && <p>Pinnwände werden geladen...</p>}
-          <div className="wall-profile-list">
-            <button className="active" type="button">
-              <span className="mini-avatar">{activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}</span>
-              <span>{activeProfile.name}</span>
+            <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")}>
+              Registrieren
             </button>
           </div>
-          <label className="photo-drop">
-            Bilder auf meine Pinnwand laden
-            <input type="file" accept="image/*" multiple onChange={uploadPhotos} />
-          </label>
+
+          {authMode === "login" ? (
+            <form className="form wall-auth-form" onSubmit={login}>
+              <p className="eyebrow">Account</p>
+              <h2>Einloggen</h2>
+              <label>
+                Nutzername
+                <input
+                  value={loginHandle}
+                  onChange={(event) => setLoginHandle(event.target.value)}
+                  placeholder="dein Nutzername"
+                  required
+                />
+              </label>
+              <label>
+                Passwort
+                <input
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  type="password"
+                  placeholder="dein Passwort"
+                  required
+                />
+              </label>
+              <button className="aqua-button">Einloggen</button>
+            </form>
+          ) : (
+            <form className="form wall-auth-form" onSubmit={createProfile}>
+              <p className="eyebrow">Neu hier</p>
+              <h2>Registrieren</h2>
+              <label>
+                Name
+                <input name="name" required placeholder="Dein Name" />
+              </label>
+              <label>
+                Nutzername
+                <input name="handle" required placeholder="z. B. louki2003" />
+              </label>
+              <label>
+                Passwort
+                <input name="password" type="password" required placeholder="Nicht dein wichtiges Passwort nutzen" />
+              </label>
+              <label>
+                Profilbild
+                <input name="avatar" type="file" accept="image/*" />
+              </label>
+              <label>
+                Überschrift
+                <input name="headline" placeholder="z. B. Loukis Ecke im Internet" />
+              </label>
+              <label>
+                Status
+                <input name="mood" placeholder="z. B. bereit fuer Karaoke" />
+              </label>
+              <label>
+                Profil-Song
+                <input name="song" placeholder="Dein Song des Abends" />
+              </label>
+              <label>
+                Farbe
+                <select name="theme" defaultValue="blue">
+                  {themeOptions.map((theme) => (
+                    <option value={theme.value} key={theme.value}>
+                      {theme.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Muster
+                <select name="pattern" defaultValue="aqua">
+                  {patternOptions.map((pattern) => (
+                    <option value={pattern.value} key={pattern.value}>
+                      {pattern.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sticker-Pack
+                <select name="stickerPack" defaultValue="party">
+                  {stickerPackOptions.map((pack) => (
+                    <option value={pack.value} key={pack.value}>
+                      {pack.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="check-label">
+                <input name="glitter" type="checkbox" defaultChecked />
+                Glitzer-Modus aktivieren
+              </label>
+              <label>
+                Kurzer Text
+                <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
+              </label>
+              <button className="aqua-button">Account erstellen</button>
+            </form>
+          )}
+          {loading && <p>Pinnwände werden geladen...</p>}
+          {status && <p className="form-message done">{status}</p>}
         </div>
       </section>
 
-      <section
-        id="wall"
-        className={`section wall-stage theme-${viewProfile.theme} pattern-${viewProfile.pattern} ${
-          viewProfile.glitter ? "glitter-on" : ""
-        } pack-${viewProfile.stickerPack}`}
-      >
-        <aside className="wall-directory">
-          <p className="eyebrow">Alle Pinnwände</p>
-          {profiles.map((profile) => (
-            <button
-              className={profile.id === viewProfile.id ? "active" : ""}
-              key={profile.id}
-              onClick={() => setViewProfileId(profile.id)}
-            >
-              {profile.name}
-            </button>
-          ))}
-        </aside>
-
-        <article className="myspace-card">
-          <div className="myspace-topbar">
-            <span />
-            <span />
-            <span />
-            <strong>{viewProfile.headline || `${viewProfile.name}s Pinnwand`}</strong>
-          </div>
-
-          <div className="profile-grid">
-            <div className="profile-sidebar">
-              <div className="profile-avatar">
-                {viewProfile.avatar ? <img src={viewProfile.avatar} alt={viewProfile.name} /> : viewProfile.name[0]}
-              </div>
-              <h2>{viewProfile.name}</h2>
-              <p>@{viewProfile.handle}</p>
-              <div className="status-pill">Status: {viewProfile.mood}</div>
-              <div className="profile-song">Profil-Song: {viewProfile.song}</div>
-              <div className="profile-stickers" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
+      {activeProfile && viewProfile && (
+        <>
+          <aside className="wall-music-player">
+            <strong>KimonSpace Player</strong>
+            <span>
+              {tracks[activeTrack].title} - {tracks[activeTrack].artist}
+            </span>
+            <div>
+              <button onClick={toggleMusic}>{isPlaying ? "Pause" : "Play"}</button>
+              <button onClick={nextTrack}>Next</button>
             </div>
+          </aside>
 
-            <div className="profile-main">
-              <section className="wall-box">
-                <h3>Über mich</h3>
-                <p>{viewProfile.bio}</p>
-              </section>
+          <section className="section wall-account-bar">
+            <div className="snow-window wall-switcher">
+              <p className="eyebrow">Eingeloggt als</p>
+              <div className="wall-profile-list">
+                <button className="active" type="button">
+                  <span className="mini-avatar">
+                    {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
+                  </span>
+                  <span>{activeProfile.name}</span>
+                </button>
+              </div>
+              <label className="photo-drop">
+                Bilder auf meine Pinnwand laden
+                <input type="file" accept="image/*" multiple onChange={uploadPhotos} />
+              </label>
+              <button className="secondary-button" type="button" onClick={logout}>
+                Ausloggen
+              </button>
+            </div>
+          </section>
 
-              {activeProfile.id === viewProfile.id && (
-                <section className="wall-box">
-                  <h3>Meine Wand stylen</h3>
-                  <form className="pin-form" onSubmit={saveStyle}>
-                    <label>
-                      Überschrift
-                      <input name="headline" defaultValue={activeProfile.headline} />
-                    </label>
-                    <label>
-                      Status
-                      <input name="mood" defaultValue={activeProfile.mood} />
-                    </label>
-                    <label>
-                      Profil-Song
-                      <input name="song" defaultValue={activeProfile.song} />
-                    </label>
-                    <label>
-                      Bio
-                      <textarea name="bio" defaultValue={activeProfile.bio} />
-                    </label>
-                    <label>
-                      Farbe
-                      <select name="theme" defaultValue={activeProfile.theme}>
-                        {themeOptions.map((theme) => (
-                          <option value={theme.value} key={theme.value}>
-                            {theme.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Muster
-                      <select name="pattern" defaultValue={activeProfile.pattern}>
-                        {patternOptions.map((pattern) => (
-                          <option value={pattern.value} key={pattern.value}>
-                            {pattern.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Sticker-Pack
-                      <select name="stickerPack" defaultValue={activeProfile.stickerPack}>
-                        {stickerPackOptions.map((pack) => (
-                          <option value={pack.value} key={pack.value}>
-                            {pack.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="check-label">
-                      <input name="glitter" type="checkbox" defaultChecked={activeProfile.glitter} />
-                      Glitzer-Modus
-                    </label>
-                    <button className="aqua-button">Style speichern</button>
-                  </form>
-                </section>
-              )}
+          <section
+            id="wall"
+            className={`section wall-stage theme-${viewProfile.theme} pattern-${viewProfile.pattern} ${
+              viewProfile.glitter ? "glitter-on" : ""
+            } pack-${viewProfile.stickerPack}`}
+          >
+            <aside className="wall-directory">
+              <p className="eyebrow">Alle Pinnwände</p>
+              {profiles.map((profile) => (
+                <button
+                  className={profile.id === viewProfile.id ? "active" : ""}
+                  key={profile.id}
+                  onClick={() => setViewProfileId(profile.id)}
+                >
+                  {profile.name}
+                </button>
+              ))}
+            </aside>
 
-              <section className="wall-box">
-                <h3>Top Freunde</h3>
-                <div className="top-friends">
-                  {topFriends.length ? (
-                    topFriends.map((friend) => (
-                      <button key={friend.id} onClick={() => setViewProfileId(friend.id)}>
-                        <span className="mini-avatar">{friend.avatar ? <img src={friend.avatar} alt="" /> : friend.name[0]}</span>
-                        <span>{friend.name}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <p>Noch keine anderen Pinnwände.</p>
-                  )}
-                </div>
-              </section>
+            <article className="myspace-card">
+              <div className="myspace-topbar">
+                <span />
+                <span />
+                <span />
+                <strong>{viewProfile.headline || `${viewProfile.name}s Pinnwand`}</strong>
+              </div>
 
-              <section className="wall-box">
-                <h3>Bilder</h3>
-                {viewProfile.photos.length ? (
-                  <div className="wall-photos">
-                    {viewProfile.photos.map((photo, index) => (
-                      <img src={photo} alt={`${viewProfile.name} Foto ${index + 1}`} key={`${photo}-${index}`} />
-                    ))}
+              <div className="profile-grid">
+                <div className="profile-sidebar">
+                  <div className="profile-avatar">
+                    {viewProfile.avatar ? <img src={viewProfile.avatar} alt={viewProfile.name} /> : viewProfile.name[0]}
                   </div>
-                ) : (
-                  <p>Noch keine Bilder hochgeladen.</p>
-                )}
-              </section>
-
-              <section className="wall-box">
-                <h3>Etwas anpinnen</h3>
-                <form className="pin-form" onSubmit={pinPost}>
-                  <label>
-                    Sticker
-                    <select name="sticker" defaultValue={stickerOptions[0]}>
-                      {stickerOptions.map((sticker) => (
-                        <option key={sticker}>{sticker}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Nachricht
-                    <textarea name="text" placeholder={`Schreib etwas auf ${viewProfile.name}s Wand`} required />
-                  </label>
-                  <button className="aqua-button">Auf die Wand pinnen</button>
-                </form>
-              </section>
-
-              <section className="wall-box">
-                <h3>Wand</h3>
-                <div className="wall-posts">
-                  {wallPosts.length ? (
-                    wallPosts.map((post) => {
-                      const author = profiles.find((profile) => profile.id === post.authorId);
-                      return (
-                        <article className="wall-post" key={post.id}>
-                          <strong>{post.sticker}</strong>
-                          <p>{post.text}</p>
-                          <span>
-                            Von {author?.name || "Unbekannt"} · {new Date(post.createdAt).toLocaleString("de-DE")}
-                          </span>
-                        </article>
-                      );
-                    })
-                  ) : (
-                    <p>Noch nichts angepinnt. Sei die erste Person.</p>
-                  )}
+                  <h2>{viewProfile.name}</h2>
+                  <p>@{viewProfile.handle}</p>
+                  <div className="status-pill">Status: {viewProfile.mood}</div>
+                  <div className="profile-song">Profil-Song: {viewProfile.song}</div>
+                  <div className="profile-stickers" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
-              </section>
-            </div>
-          </div>
-        </article>
-      </section>
+
+                <div className="profile-main">
+                  <section className="wall-box">
+                    <h3>Über mich</h3>
+                    <p>{viewProfile.bio}</p>
+                  </section>
+
+                  {activeProfile.id === viewProfile.id && (
+                    <section className="wall-box">
+                      <h3>Meine Wand stylen</h3>
+                      <form className="pin-form" onSubmit={saveStyle}>
+                        <label>
+                          Überschrift
+                          <input name="headline" defaultValue={activeProfile.headline} />
+                        </label>
+                        <label>
+                          Status
+                          <input name="mood" defaultValue={activeProfile.mood} />
+                        </label>
+                        <label>
+                          Profil-Song
+                          <input name="song" defaultValue={activeProfile.song} />
+                        </label>
+                        <label>
+                          Bio
+                          <textarea name="bio" defaultValue={activeProfile.bio} />
+                        </label>
+                        <label>
+                          Farbe
+                          <select name="theme" defaultValue={activeProfile.theme}>
+                            {themeOptions.map((theme) => (
+                              <option value={theme.value} key={theme.value}>
+                                {theme.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Muster
+                          <select name="pattern" defaultValue={activeProfile.pattern}>
+                            {patternOptions.map((pattern) => (
+                              <option value={pattern.value} key={pattern.value}>
+                                {pattern.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Sticker-Pack
+                          <select name="stickerPack" defaultValue={activeProfile.stickerPack}>
+                            {stickerPackOptions.map((pack) => (
+                              <option value={pack.value} key={pack.value}>
+                                {pack.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="check-label">
+                          <input name="glitter" type="checkbox" defaultChecked={activeProfile.glitter} />
+                          Glitzer-Modus
+                        </label>
+                        <button className="aqua-button">Style speichern</button>
+                      </form>
+                    </section>
+                  )}
+
+                  <section className="wall-box">
+                    <h3>Top Freunde</h3>
+                    <div className="top-friends">
+                      {topFriends.length ? (
+                        topFriends.map((friend) => (
+                          <button key={friend.id} onClick={() => setViewProfileId(friend.id)}>
+                            <span className="mini-avatar">
+                              {friend.avatar ? <img src={friend.avatar} alt="" /> : friend.name[0]}
+                            </span>
+                            <span>{friend.name}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <p>Noch keine anderen Pinnwände.</p>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="wall-box">
+                    <h3>Bilder</h3>
+                    {viewProfile.photos.length ? (
+                      <div className="wall-photos">
+                        {viewProfile.photos.map((photo, index) => (
+                          <img src={photo} alt={`${viewProfile.name} Foto ${index + 1}`} key={`${photo}-${index}`} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p>Noch keine Bilder hochgeladen.</p>
+                    )}
+                  </section>
+
+                  <section className="wall-box">
+                    <h3>Etwas anpinnen</h3>
+                    <form className="pin-form" onSubmit={pinPost}>
+                      <label>
+                        Sticker
+                        <select name="sticker" defaultValue={stickerOptions[0]}>
+                          {stickerOptions.map((sticker) => (
+                            <option key={sticker}>{sticker}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Nachricht
+                        <textarea name="text" placeholder={`Schreib etwas auf ${viewProfile.name}s Wand`} required />
+                      </label>
+                      <button className="aqua-button">Auf die Wand pinnen</button>
+                    </form>
+                  </section>
+
+                  <section className="wall-box">
+                    <h3>Wand</h3>
+                    <div className="wall-posts">
+                      {wallPosts.length ? (
+                        wallPosts.map((post) => {
+                          const author = profiles.find((profile) => profile.id === post.authorId);
+                          return (
+                            <article className="wall-post" key={post.id}>
+                              <strong>{post.sticker}</strong>
+                              <p>{post.text}</p>
+                              <span>
+                                Von {author?.name || "Unbekannt"} · {new Date(post.createdAt).toLocaleString("de-DE")}
+                              </span>
+                            </article>
+                          );
+                        })
+                      ) : (
+                        <p>Noch nichts angepinnt. Sei die erste Person.</p>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </article>
+          </section>
+        </>
+      )}
     </main>
   );
 }
