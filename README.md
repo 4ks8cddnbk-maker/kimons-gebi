@@ -102,3 +102,4 @@ Der Adminbereich liegt unter `/admin`.
 Das Passwort ist aktuell `louki22`, beziehungsweise der Wert aus `ADMIN_PASSWORD`.
 # kimons-gebi
 # kimons-gebi
+# kimons-gebi
