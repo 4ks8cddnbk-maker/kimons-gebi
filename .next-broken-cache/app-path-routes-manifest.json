@@ -1,0 +1,9 @@
+{
+  "/api/rsvp/route": "/api/rsvp",
+  "/_not-found/page": "/_not-found",
+  "/api/admin/logout/route": "/api/admin/logout",
+  "/api/photos/route": "/api/photos",
+  "/api/admin/login/route": "/api/admin/login",
+  "/admin/page": "/admin",
+  "/page": "/"
+}
