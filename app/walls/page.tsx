@@ -20,6 +20,10 @@ type Profile = {
   mood: string;
   song: string;
   theme: string;
+  pattern: string;
+  stickerPack: string;
+  headline: string;
+  glitter: boolean;
   photos: string[];
 };
 
@@ -33,29 +37,50 @@ const defaultProfiles: Profile[] = [
     mood: "bereit fuer Karaoke",
     song: "Moment - C4RL",
     theme: "blue",
+    pattern: "aqua",
+    stickerPack: "party",
+    headline: "Willkommen auf Kimons Pinnwand",
+    glitter: true,
     photos: []
   }
 ];
 
-const stickerOptions = ["Aqua Star", "Mixtape", "Karaoke", "Party Pin", "Snow Leopard"];
+const stickerOptions = [
+  "Aqua Star",
+  "Mixtape",
+  "Karaoke",
+  "Party Pin",
+  "Snow Leopard",
+  "Glitter Comment",
+  "Top 8 Energy",
+  "Afterparty Seal",
+  "iPod Approved",
+  "Main Character"
+];
 const themeOptions = [
   { value: "blue", label: "Aqua Blau" },
   { value: "green", label: "Limewire Gruen" },
   { value: "pink", label: "MySpace Pink" },
-  { value: "gold", label: "iPod Gold" }
+  { value: "gold", label: "iPod Gold" },
+  { value: "purple", label: "Neon Lila" },
+  { value: "black", label: "Black Chrome" }
+];
+const patternOptions = [
+  { value: "aqua", label: "Aqua Streifen" },
+  { value: "stars", label: "Sterne" },
+  { value: "checker", label: "Checkerboard" },
+  { value: "hearts", label: "Hearts" },
+  { value: "scanlines", label: "CRT Lines" }
+];
+const stickerPackOptions = [
+  { value: "party", label: "Party Sticker" },
+  { value: "glam", label: "Glam Sticker" },
+  { value: "retro", label: "Retro Web" },
+  { value: "karaoke", label: "Karaoke Pack" }
 ];
 
 function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function readImage(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function WallsPage() {
@@ -64,6 +89,9 @@ export default function WallsPage() {
   const [activeProfileId, setActiveProfileId] = useState(defaultProfiles[0].id);
   const [viewProfileId, setViewProfileId] = useState(defaultProfiles[0].id);
   const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loginHandle, setLoginHandle] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0];
   const viewProfile = profiles.find((profile) => profile.id === viewProfileId) || profiles[0];
@@ -74,38 +102,105 @@ export default function WallsPage() {
   const topFriends = profiles.filter((profile) => profile.id !== viewProfile.id).slice(0, 6);
 
   useEffect(() => {
-    const savedProfiles = window.localStorage.getItem("kimon-wall-profiles");
-    const savedPosts = window.localStorage.getItem("kimon-wall-posts");
-
-    if (savedProfiles) {
-      const parsedProfiles = JSON.parse(savedProfiles) as Profile[];
-      setProfiles(parsedProfiles.length ? parsedProfiles : defaultProfiles);
-      setActiveProfileId(parsedProfiles[0]?.id || defaultProfiles[0].id);
-      setViewProfileId(parsedProfiles[0]?.id || defaultProfiles[0].id);
-    }
-
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts) as WallPost[]);
-    }
+    loadWalls();
   }, []);
 
-  useEffect(() => {
-    window.localStorage.setItem("kimon-wall-profiles", JSON.stringify(profiles));
-  }, [profiles]);
+  async function loadWalls() {
+    setLoading(true);
 
-  useEffect(() => {
-    window.localStorage.setItem("kimon-wall-posts", JSON.stringify(posts));
-  }, [posts]);
+    try {
+      const [profilesResponse, postsResponse] = await Promise.all([
+        fetch("/api/walls/profiles", { cache: "no-store" }),
+        fetch("/api/walls/posts", { cache: "no-store" })
+      ]);
+      const profilesData = await profilesResponse.json();
+      const postsData = await postsResponse.json();
+      const nextProfiles = profilesData.profiles?.length ? profilesData.profiles : defaultProfiles;
+
+      setProfiles(nextProfiles);
+      setPosts(postsData.posts || []);
+      setActiveProfileId(profilesData.activeProfileId || nextProfiles[0].id);
+      setViewProfileId((currentId) => nextProfiles.find((profile: Profile) => profile.id === currentId)?.id || nextProfiles[0].id);
+
+      if (!profilesResponse.ok || !postsResponse.ok) {
+        setStatus(profilesData.message || postsData.message || "Supabase ist noch nicht fertig eingerichtet.");
+      }
+    } catch {
+      setStatus("Pinnwände konnten nicht geladen werden.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function uploadFiles(files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+
+    const response = await fetch("/api/walls/upload", {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Upload fehlgeschlagen.");
+    }
+
+    return data as { urls: string[]; profile?: Profile; message?: string };
+  }
+
+  async function login(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("Login wird geprüft...");
+
+    const response = await fetch("/api/walls/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ handle: loginHandle, password: loginPassword })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.message || "Login stimmt nicht.");
+      return;
+    }
+
+    setActiveProfileId(data.activeProfileId);
+    setViewProfileId(data.activeProfileId);
+    setLoginHandle("");
+    setLoginPassword("");
+    setStatus("Eingeloggt.");
+  }
+
+  async function logout() {
+    await fetch("/api/walls/login", { method: "DELETE" });
+    setActiveProfileId(profiles[0]?.id || defaultProfiles[0].id);
+    setStatus("Ausgeloggt.");
+  }
 
   async function createProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
     const file = formData.get("avatar");
-    const avatar = file instanceof File && file.size ? await readImage(file) : "";
     const name = String(formData.get("name") || "").trim();
+    const password = String(formData.get("password") || "");
 
-    if (!name) return;
+    if (!name || !password) return;
+
+    setStatus("Pinnwand wird gespeichert...");
+
+    let avatar = "";
+
+    try {
+      if (file instanceof File && file.size) {
+        const upload = await uploadFiles([file]);
+        avatar = upload.urls[0] || "";
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Profilbild konnte nicht hochgeladen werden.");
+      return;
+    }
 
     const profile: Profile = {
       id: createId(),
@@ -116,12 +211,28 @@ export default function WallsPage() {
       mood: String(formData.get("mood") || "online"),
       song: String(formData.get("song") || "Karaoke Song offen"),
       theme: String(formData.get("theme") || "blue"),
+      pattern: String(formData.get("pattern") || "aqua"),
+      stickerPack: String(formData.get("stickerPack") || "party"),
+      headline: String(formData.get("headline") || `${name}s Pinnwand`),
+      glitter: formData.get("glitter") === "on",
       photos: []
     };
 
-    setProfiles((currentProfiles) => [...currentProfiles, profile]);
-    setActiveProfileId(profile.id);
-    setViewProfileId(profile.id);
+    const response = await fetch("/api/walls/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...profile, password })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.message || "Pinnwand konnte nicht gespeichert werden.");
+      return;
+    }
+
+    setProfiles((currentProfiles) => [...currentProfiles, data.profile]);
+    setActiveProfileId(data.profile.id);
+    setViewProfileId(data.profile.id);
     setStatus("Pinnwand erstellt.");
     form.reset();
   }
@@ -130,17 +241,60 @@ export default function WallsPage() {
     const files = Array.from(event.target.files || []).slice(0, 6);
     if (!files.length) return;
 
-    const images = await Promise.all(files.map(readImage));
-    setProfiles((currentProfiles) =>
-      currentProfiles.map((profile) =>
-        profile.id === activeProfile.id ? { ...profile, photos: [...images, ...profile.photos].slice(0, 12) } : profile
-      )
-    );
-    setStatus("Bild(er) auf deine Pinnwand gelegt.");
-    event.target.value = "";
+    setStatus("Bild(er) werden hochgeladen...");
+
+    try {
+      const data = await uploadFiles(files);
+
+      if (data.profile) {
+        setProfiles((currentProfiles) =>
+          currentProfiles.map((profile) => (profile.id === data.profile?.id ? data.profile : profile))
+        );
+      }
+
+      setStatus(data.message || "Bild(er) auf deine Pinnwand gelegt.");
+      event.target.value = "";
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
+    }
   }
 
-  function pinPost(event: FormEvent<HTMLFormElement>) {
+  async function saveStyle(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setStatus("Style wird gespeichert...");
+
+    const payload = {
+      headline: String(formData.get("headline") || activeProfile.headline),
+      bio: String(formData.get("bio") || activeProfile.bio),
+      mood: String(formData.get("mood") || activeProfile.mood),
+      song: String(formData.get("song") || activeProfile.song),
+      theme: String(formData.get("theme") || activeProfile.theme),
+      pattern: String(formData.get("pattern") || activeProfile.pattern),
+      stickerPack: String(formData.get("stickerPack") || activeProfile.stickerPack),
+      glitter: formData.get("glitter") === "on"
+    };
+
+    const response = await fetch("/api/walls/profiles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.message || "Style konnte nicht gespeichert werden.");
+      return;
+    }
+
+    setProfiles((currentProfiles) =>
+      currentProfiles.map((profile) => (profile.id === data.profile.id ? data.profile : profile))
+    );
+    setViewProfileId(data.profile.id);
+    setStatus("Style gespeichert.");
+  }
+
+  async function pinPost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -148,17 +302,25 @@ export default function WallsPage() {
 
     if (!text) return;
 
-    setPosts((currentPosts) => [
-      {
-        id: createId(),
-        authorId: activeProfile.id,
+    setStatus("Pin wird gespeichert...");
+
+    const response = await fetch("/api/walls/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         targetId: viewProfile.id,
         text,
-        sticker: String(formData.get("sticker") || stickerOptions[0]),
-        createdAt: new Date().toISOString()
-      },
-      ...currentPosts
-    ]);
+        sticker: String(formData.get("sticker") || stickerOptions[0])
+      })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.message || "Pin konnte nicht gespeichert werden.");
+      return;
+    }
+
+    setPosts((currentPosts) => [data.post, ...currentPosts]);
     setStatus(`Auf ${viewProfile.name}s Pinnwand gepinnt.`);
     form.reset();
   }
@@ -202,6 +364,10 @@ export default function WallsPage() {
             <input name="handle" placeholder="z. B. louki2003" />
           </label>
           <label>
+            Passwort
+            <input name="password" type="password" required placeholder="Nicht dein wichtiges Passwort nutzen" />
+          </label>
+          <label>
             Profilbild
             <input name="avatar" type="file" accept="image/*" />
           </label>
@@ -214,6 +380,10 @@ export default function WallsPage() {
             <input name="song" placeholder="Dein Song des Abends" />
           </label>
           <label>
+            Überschrift
+            <input name="headline" placeholder="z. B. Loukis Ecke im Internet" />
+          </label>
+          <label>
             Style
             <select name="theme" defaultValue="blue">
               {themeOptions.map((theme) => (
@@ -224,6 +394,30 @@ export default function WallsPage() {
             </select>
           </label>
           <label>
+            Muster
+            <select name="pattern" defaultValue="aqua">
+              {patternOptions.map((pattern) => (
+                <option value={pattern.value} key={pattern.value}>
+                  {pattern.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Sticker-Pack
+            <select name="stickerPack" defaultValue="party">
+              {stickerPackOptions.map((pack) => (
+                <option value={pack.value} key={pack.value}>
+                  {pack.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check-label">
+            <input name="glitter" type="checkbox" defaultChecked />
+            Glitzer-Modus aktivieren
+          </label>
+          <label>
             Kurzer Text
             <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
           </label>
@@ -232,19 +426,34 @@ export default function WallsPage() {
         </form>
 
         <div className="snow-window wall-switcher">
-          <p className="eyebrow">Wer bist du?</p>
-          <h2>Profil wählen</h2>
+          <p className="eyebrow">Account</p>
+          <h2>Anmelden</h2>
+          <form className="form compact wall-login" onSubmit={login}>
+            <label>
+              Nutzername
+              <input value={loginHandle} onChange={(event) => setLoginHandle(event.target.value)} placeholder="dein Nutzername" />
+            </label>
+            <label>
+              Passwort
+              <input
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                type="password"
+                placeholder="dein Passwort"
+              />
+            </label>
+            <button className="aqua-button">Einloggen</button>
+            <button className="secondary-button" type="button" onClick={logout}>
+              Ausloggen
+            </button>
+          </form>
+          <p className="eyebrow">Aktiv</p>
+          {loading && <p>Pinnwände werden geladen...</p>}
           <div className="wall-profile-list">
-            {profiles.map((profile) => (
-              <button
-                className={profile.id === activeProfile.id ? "active" : ""}
-                key={profile.id}
-                onClick={() => setActiveProfileId(profile.id)}
-              >
-                <span className="mini-avatar">{profile.avatar ? <img src={profile.avatar} alt="" /> : profile.name[0]}</span>
-                <span>{profile.name}</span>
-              </button>
-            ))}
+            <button className="active" type="button">
+              <span className="mini-avatar">{activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}</span>
+              <span>{activeProfile.name}</span>
+            </button>
           </div>
           <label className="photo-drop">
             Bilder auf meine Pinnwand laden
@@ -253,7 +462,12 @@ export default function WallsPage() {
         </div>
       </section>
 
-      <section id="wall" className={`section wall-stage theme-${viewProfile.theme}`}>
+      <section
+        id="wall"
+        className={`section wall-stage theme-${viewProfile.theme} pattern-${viewProfile.pattern} ${
+          viewProfile.glitter ? "glitter-on" : ""
+        } pack-${viewProfile.stickerPack}`}
+      >
         <aside className="wall-directory">
           <p className="eyebrow">Alle Pinnwände</p>
           {profiles.map((profile) => (
@@ -272,7 +486,7 @@ export default function WallsPage() {
             <span />
             <span />
             <span />
-            <strong>{viewProfile.name}s Pinnwand</strong>
+            <strong>{viewProfile.headline || `${viewProfile.name}s Pinnwand`}</strong>
           </div>
 
           <div className="profile-grid">
@@ -284,6 +498,11 @@ export default function WallsPage() {
               <p>@{viewProfile.handle}</p>
               <div className="status-pill">Status: {viewProfile.mood}</div>
               <div className="profile-song">Profil-Song: {viewProfile.song}</div>
+              <div className="profile-stickers" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
             </div>
 
             <div className="profile-main">
@@ -291,6 +510,65 @@ export default function WallsPage() {
                 <h3>Über mich</h3>
                 <p>{viewProfile.bio}</p>
               </section>
+
+              {activeProfile.id === viewProfile.id && (
+                <section className="wall-box">
+                  <h3>Meine Wand stylen</h3>
+                  <form className="pin-form" onSubmit={saveStyle}>
+                    <label>
+                      Überschrift
+                      <input name="headline" defaultValue={activeProfile.headline} />
+                    </label>
+                    <label>
+                      Status
+                      <input name="mood" defaultValue={activeProfile.mood} />
+                    </label>
+                    <label>
+                      Profil-Song
+                      <input name="song" defaultValue={activeProfile.song} />
+                    </label>
+                    <label>
+                      Bio
+                      <textarea name="bio" defaultValue={activeProfile.bio} />
+                    </label>
+                    <label>
+                      Farbe
+                      <select name="theme" defaultValue={activeProfile.theme}>
+                        {themeOptions.map((theme) => (
+                          <option value={theme.value} key={theme.value}>
+                            {theme.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Muster
+                      <select name="pattern" defaultValue={activeProfile.pattern}>
+                        {patternOptions.map((pattern) => (
+                          <option value={pattern.value} key={pattern.value}>
+                            {pattern.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Sticker-Pack
+                      <select name="stickerPack" defaultValue={activeProfile.stickerPack}>
+                        {stickerPackOptions.map((pack) => (
+                          <option value={pack.value} key={pack.value}>
+                            {pack.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="check-label">
+                      <input name="glitter" type="checkbox" defaultChecked={activeProfile.glitter} />
+                      Glitzer-Modus
+                    </label>
+                    <button className="aqua-button">Style speichern</button>
+                  </form>
+                </section>
+              )}
 
               <section className="wall-box">
                 <h3>Top Freunde</h3>

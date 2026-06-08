@@ -1756,6 +1756,16 @@ footer {
   --wall-b: #fff3ca;
 }
 
+.theme-purple {
+  --wall-a: #8a6dff;
+  --wall-b: #ece8ff;
+}
+
+.theme-black {
+  --wall-a: #20293a;
+  --wall-b: #dfe4ec;
+}
+
 .wall-directory {
   position: sticky;
   top: 72px;
@@ -1769,6 +1779,7 @@ footer {
 }
 
 .myspace-card {
+  position: relative;
   overflow: hidden;
   background:
     radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--wall-a), transparent 72%), transparent 26%),
@@ -1776,6 +1787,63 @@ footer {
   border: 1px solid #8f9db2;
   border-radius: 8px;
   box-shadow: var(--shadow), inset 0 1px 0 #fff;
+}
+
+.pattern-stars .myspace-card {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 36%, rgba(255, 255, 255, 0.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 74%, rgba(255, 255, 255, 0.78) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--wall-a), transparent 70%), transparent 28%),
+    linear-gradient(#f9fbff, var(--wall-b));
+  background-size: 120px 120px, 150px 150px, 170px 170px, auto, auto;
+}
+
+.pattern-checker .myspace-card {
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.28) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.28) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.28) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.28) 75%),
+    linear-gradient(#f9fbff, var(--wall-b));
+  background-position: 0 0, 12px 12px, 0 0;
+  background-size: 24px 24px, 24px 24px, auto;
+}
+
+.pattern-hearts .myspace-card {
+  background:
+    radial-gradient(circle at 18px 18px, color-mix(in srgb, var(--wall-a), transparent 62%) 0 5px, transparent 6px),
+    radial-gradient(circle at 38px 38px, rgba(255, 255, 255, 0.52) 0 4px, transparent 5px),
+    linear-gradient(#f9fbff, var(--wall-b));
+  background-size: 56px 56px, 56px 56px, auto;
+}
+
+.pattern-scanlines .myspace-card {
+  background:
+    repeating-linear-gradient(0deg, rgba(25, 35, 52, 0.08) 0 1px, transparent 1px 6px),
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--wall-a), transparent 72%), transparent 26%),
+    linear-gradient(#f9fbff, var(--wall-b));
+}
+
+.glitter-on .myspace-card {
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 #fff,
+    0 0 28px color-mix(in srgb, var(--wall-a), transparent 64%);
+}
+
+.glitter-on .myspace-card::after {
+  content: "";
+  position: absolute;
+  inset: 54px 18px auto auto;
+  width: min(220px, 35vw);
+  height: min(220px, 35vw);
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle, color-mix(in srgb, var(--wall-a), transparent 38%) 0 2px, transparent 3px);
+  background-position: 12px 18px, 48px 52px;
+  background-size: 44px 44px, 62px 62px;
+  opacity: 0.72;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
 }
 
 .myspace-topbar {
@@ -1881,6 +1949,91 @@ footer {
   border-radius: 8px;
 }
 
+.profile-stickers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.profile-stickers span {
+  display: grid;
+  place-items: center;
+  min-height: 50px;
+  background: linear-gradient(#fff, #dbe4f0);
+  border: 1px solid #aeb9c8;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 #fff, 0 7px 14px rgba(23, 40, 68, 0.1);
+}
+
+.pack-party .profile-stickers span:nth-child(1)::before {
+  content: "VIP";
+}
+
+.pack-party .profile-stickers span:nth-child(2)::before {
+  content: "23";
+}
+
+.pack-party .profile-stickers span:nth-child(3)::before {
+  content: "PLAY";
+}
+
+.pack-glam .profile-stickers span:nth-child(1)::before {
+  content: "GLAM";
+}
+
+.pack-glam .profile-stickers span:nth-child(2)::before {
+  content: "TOP";
+}
+
+.pack-glam .profile-stickers span:nth-child(3)::before {
+  content: "SHINE";
+}
+
+.pack-retro .profile-stickers span:nth-child(1)::before {
+  content: "WWW";
+}
+
+.pack-retro .profile-stickers span:nth-child(2)::before {
+  content: "BLOG";
+}
+
+.pack-retro .profile-stickers span:nth-child(3)::before {
+  content: "2006";
+}
+
+.pack-karaoke .profile-stickers span:nth-child(1)::before {
+  content: "MIC";
+}
+
+.pack-karaoke .profile-stickers span:nth-child(2)::before {
+  content: "DUET";
+}
+
+.pack-karaoke .profile-stickers span:nth-child(3)::before {
+  content: "STAR";
+}
+
+.profile-stickers span::before {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.32);
+}
+
+.profile-stickers span:nth-child(1) {
+  background: linear-gradient(#ff9dca, #d34c89);
+}
+
+.profile-stickers span:nth-child(2) {
+  background: linear-gradient(#9de5ff, #277fbd);
+}
+
+.profile-stickers span:nth-child(3) {
+  background: linear-gradient(#b9ed8f, #32a556);
+}
+
 .profile-main {
   display: grid;
   gap: 16px;
@@ -1970,6 +2123,17 @@ footer {
   background: linear-gradient(var(--wall-a), #24466f);
   border-radius: 999px;
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.check-label input {
+  width: auto;
+  min-height: auto;
 }
 
 .wall-post p {

@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/walls/posts/route": "/api/walls/posts",
+  "/api/photos/route": "/api/photos",
+  "/api/karaoke/route": "/api/karaoke",
+  "/api/walls/profiles/route": "/api/walls/profiles",
+  "/api/walls/upload/route": "/api/walls/upload",
+  "/api/admin/logout/route": "/api/admin/logout",
+  "/api/admin/login/route": "/api/admin/login",
+  "/admin/page": "/admin",
+  "/walls/page": "/walls",
+  "/page": "/"
+}
