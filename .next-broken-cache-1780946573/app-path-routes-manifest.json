@@ -1,0 +1,9 @@
+{
+  "/api/karaoke/route": "/api/karaoke",
+  "/api/admin/login/route": "/api/admin/login",
+  "/api/admin/logout/route": "/api/admin/logout",
+  "/_not-found/page": "/_not-found",
+  "/api/photos/route": "/api/photos",
+  "/admin/page": "/admin",
+  "/page": "/"
+}

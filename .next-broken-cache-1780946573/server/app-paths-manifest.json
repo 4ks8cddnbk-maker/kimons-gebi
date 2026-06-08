@@ -1,0 +1,9 @@
+{
+  "/api/karaoke/route": "app/api/karaoke/route.js",
+  "/api/admin/login/route": "app/api/admin/login/route.js",
+  "/api/admin/logout/route": "app/api/admin/logout/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/photos/route": "app/api/photos/route.js",
+  "/admin/page": "app/admin/page.js",
+  "/page": "app/page.js"
+}

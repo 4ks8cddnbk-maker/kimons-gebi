@@ -382,6 +382,7 @@ export default function Home() {
           <a href="#home">Start</a>
           <a href="#ipod">iPod</a>
           <a href="#karaoke">Karaoke</a>
+          <a href="/walls">Pinnwände</a>
           <a href="#dresscode">Dresscode</a>
           <a href="#galerie">Fotos</a>
           <a href="/admin">Admin</a>
@@ -404,6 +405,9 @@ export default function Home() {
           <div className="hero-actions">
             <a href="#karaoke" className="aqua-button">
               Karaoke eintragen
+            </a>
+            <a href="/walls" className="secondary-button">
+              Pinnwände öffnen
             </a>
           </div>
         </div>
