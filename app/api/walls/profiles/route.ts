@@ -8,6 +8,7 @@ import {
   SupabaseProfile,
   updateWallProfile
 } from "@/lib/supabaseWalls";
+import { isAdmin } from "@/lib/auth";
 import { getWallSessionProfileId, hashPassword, setWallSession } from "@/lib/wallSession";
 
 export async function GET() {
@@ -50,21 +51,25 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const profileId = await getWallSessionProfileId();
-  const payload = (await request.json().catch(() => ({}))) as Partial<SupabaseProfile>;
+  const sessionProfileId = await getWallSessionProfileId();
+  const admin = await isAdmin();
+  const payload = (await request.json().catch(() => ({}))) as Partial<SupabaseProfile> & { profileId?: string };
+  const targetProfileId = admin && payload.profileId ? payload.profileId : sessionProfileId;
+  const profilePayload = { ...payload };
+  delete profilePayload.profileId;
 
-  if (!profileId) {
+  if (!targetProfileId) {
     return NextResponse.json({ ok: false, message: "Bitte erst einloggen." }, { status: 401 });
   }
 
-  const currentProfile = await getWallProfile(profileId);
+  const currentProfile = await getWallProfile(targetProfileId);
 
   if (!currentProfile) {
     return NextResponse.json({ ok: false, message: "Profil wurde nicht gefunden." }, { status: 404 });
   }
 
   try {
-    const profile = await updateWallProfile(profileId, payload);
+    const profile = await updateWallProfile(targetProfileId, profilePayload);
     return NextResponse.json({ ok: true, profile, message: "Pinnwand aktualisiert." });
   } catch (error) {
     return NextResponse.json(

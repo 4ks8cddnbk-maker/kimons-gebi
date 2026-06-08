@@ -107,8 +107,12 @@ export default function WallsPage() {
   const [activeProfileId, setActiveProfileId] = useState("");
   const [viewProfileId, setViewProfileId] = useState("");
   const [status, setStatus] = useState("");
+  const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [showCreateFish, setShowCreateFish] = useState(false);
+  const [profileSearch, setProfileSearch] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
@@ -144,6 +148,21 @@ export default function WallsPage() {
   const isFollowingViewProfile =
     Boolean(activeProfile && viewProfile) &&
     follows.some((follow) => follow.followerId === activeProfile?.id && follow.followingId === viewProfile?.id);
+  const visibleProfiles = useMemo(() => {
+    const search = profileSearch.trim().toLowerCase();
+    if (!search) return profiles;
+
+    return profiles.filter((profile) =>
+      [profile.name, profile.handle, profile.headline].some((value) => value.toLowerCase().includes(search))
+    );
+  }, [profileSearch, profiles]);
+  const editableProfile = viewProfile && (isAdmin || activeProfile?.id === viewProfile.id) ? viewProfile : null;
+
+  function notify(message: string) {
+    setStatus(message);
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2800);
+  }
 
   useEffect(() => {
     loadWalls();
@@ -193,10 +212,10 @@ export default function WallsPage() {
       });
 
       if (!profilesResponse.ok || !postsResponse.ok) {
-        setStatus(profilesData.message || postsData.message || "Pinnwände konnten nicht geladen werden.");
+        notify(profilesData.message || postsData.message || ".fish Profile konnten nicht geladen werden.");
       }
     } catch {
-      setStatus("Pinnwände konnten nicht geladen werden.");
+      notify(".fish Profile konnten nicht geladen werden.");
     } finally {
       if (showSpinner) setLoading(false);
     }
@@ -222,7 +241,7 @@ export default function WallsPage() {
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("Login wird geprüft...");
+    notify("Login wird geprüft...");
 
     const response = await fetch("/api/walls/login", {
       method: "POST",
@@ -232,13 +251,13 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Login stimmt nicht.");
+      notify(data.message || "Login stimmt nicht.");
       return;
     }
 
     setLoginHandle("");
     setLoginPassword("");
-    setStatus("Eingeloggt.");
+    notify("Eingeloggt. Willkommen zurück auf .fish.");
     await loadWalls();
   }
 
@@ -246,8 +265,29 @@ export default function WallsPage() {
     await fetch("/api/walls/login", { method: "DELETE" });
     setActiveProfileId("");
     setViewProfileId("");
-    setStatus("Ausgeloggt.");
+    notify("Ausgeloggt.");
     await loadWalls();
+  }
+
+  async function adminLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    notify("Admin-Zugang wird geprüft...");
+
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: adminPassword })
+    });
+    const data = await response.json().catch(() => ({ message: "" }));
+
+    if (!response.ok) {
+      notify(data.message || "Admin-Passwort stimmt nicht.");
+      return;
+    }
+
+    setIsAdmin(true);
+    setAdminPassword("");
+    notify("Admin aktiv. Du kannst geöffnete .fish Profile bearbeiten.");
   }
 
   async function createProfile(event: FormEvent<HTMLFormElement>) {
@@ -261,11 +301,11 @@ export default function WallsPage() {
     const selectedTheme = themeOptions.find((theme) => theme.value === String(formData.get("theme"))) || themeOptions[0];
 
     if (!name || !handle || !password) {
-      setStatus("Bitte Name, Nutzername und Passwort eintragen.");
+      notify("Bitte Name, Nutzername und Passwort eintragen.");
       return;
     }
 
-    setStatus("Account wird erstellt...");
+    notify(".fish wird erstellt...");
 
     let avatar = "";
 
@@ -275,7 +315,7 @@ export default function WallsPage() {
         avatar = upload.urls[0] || "";
       }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Profilbild konnte nicht hochgeladen werden.");
+      notify(error instanceof Error ? error.message : "Profilbild konnte nicht hochgeladen werden.");
       return;
     }
 
@@ -307,12 +347,13 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Account konnte nicht gespeichert werden.");
+      notify(data.message || ".fish konnte nicht gespeichert werden.");
       return;
     }
 
-    setStatus("Account erstellt und eingeloggt.");
+    notify(".fish erstellt und eingeloggt.");
     form.reset();
+    setShowCreateFish(false);
     await loadWalls();
   }
 
@@ -320,36 +361,37 @@ export default function WallsPage() {
     const files = Array.from(event.target.files || []).slice(0, 6);
     if (!files.length) return;
 
-    setStatus("Bild(er) werden hochgeladen...");
+    notify("Bild(er) werden hochgeladen...");
 
     try {
       const data = await uploadFiles(files);
-      setStatus(data.message || "Bild(er) auf deine Pinnwand gelegt.");
+      notify(data.message || "Bild(er) auf deine .fish gelegt.");
       event.target.value = "";
       await loadWalls(false);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
+      notify(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
     }
   }
 
   async function saveStyle(event: FormEvent<HTMLFormElement>) {
-    if (!activeProfile) return;
+    if (!editableProfile) return;
 
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    setStatus("Style wird gespeichert...");
+    notify(".fish Style wird gespeichert...");
 
     const payload = {
-      headline: String(formData.get("headline") || activeProfile.headline),
-      bio: String(formData.get("bio") || activeProfile.bio),
-      mood: String(formData.get("mood") || activeProfile.mood),
-      song: String(formData.get("song") || activeProfile.song),
-      theme: String(formData.get("theme") || activeProfile.theme),
-      pattern: String(formData.get("pattern") || activeProfile.pattern),
-      backgroundColor: String(formData.get("backgroundColor") || activeProfile.backgroundColor),
-      accentColor: String(formData.get("accentColor") || activeProfile.accentColor),
-      fontStyle: String(formData.get("fontStyle") || activeProfile.fontStyle),
-      layoutDensity: String(formData.get("layoutDensity") || activeProfile.layoutDensity),
+      profileId: isAdmin ? editableProfile.id : undefined,
+      headline: String(formData.get("headline") || editableProfile.headline),
+      bio: String(formData.get("bio") || editableProfile.bio),
+      mood: String(formData.get("mood") || editableProfile.mood),
+      song: String(formData.get("song") || editableProfile.song),
+      theme: String(formData.get("theme") || editableProfile.theme),
+      pattern: String(formData.get("pattern") || editableProfile.pattern),
+      backgroundColor: String(formData.get("backgroundColor") || editableProfile.backgroundColor),
+      accentColor: String(formData.get("accentColor") || editableProfile.accentColor),
+      fontStyle: String(formData.get("fontStyle") || editableProfile.fontStyle),
+      layoutDensity: String(formData.get("layoutDensity") || editableProfile.layoutDensity),
       glitter: formData.get("glitter") === "on"
     };
 
@@ -361,11 +403,11 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Style konnte nicht gespeichert werden.");
+      notify(data.message || ".fish Style konnte nicht gespeichert werden.");
       return;
     }
 
-    setStatus("Style gespeichert.");
+    notify(".fish Style gespeichert.");
     await loadWalls(false);
   }
 
@@ -383,7 +425,7 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Pin konnte nicht gespeichert werden.");
+      notify(data.message || ".fish konnte nicht gespeichert werden.");
       return;
     }
 
@@ -398,14 +440,14 @@ export default function WallsPage() {
 
     if (!text) return;
 
-    setStatus("Pin wird gespeichert...");
+    notify(".fish wird gespeichert...");
     await createPost({
       postType: "text",
       text,
       sticker: String(formData.get("sticker") || stickerOptions[0]),
       color: String(formData.get("color") || "#ffffff")
     } as WallPost);
-    setStatus("Pin gespeichert.");
+    notify("Neues .fish gespeichert.");
     form.reset();
   }
 
@@ -419,11 +461,11 @@ export default function WallsPage() {
     const text = String(formData.get("text") || "").trim();
 
     if (!(file instanceof File) || !file.size) {
-      setStatus("Bitte ein Bild auswählen.");
+      notify("Bitte ein Bild auswählen.");
       return;
     }
 
-    setStatus("Bild-Pin wird hochgeladen...");
+    notify("Bild-.fish wird hochgeladen...");
 
     try {
       const upload = await uploadFiles([file], "pin");
@@ -435,10 +477,10 @@ export default function WallsPage() {
         mediaUrl: upload.urls[0],
         collaboratorId: viewProfile.id !== activeProfile.id ? viewProfile.id : ""
       } as WallPost);
-      setStatus("Bild als Collab-Pin gespeichert.");
+      notify("Bild als Collab-.fish gespeichert.");
       form.reset();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Bild-Pin konnte nicht gespeichert werden.");
+      notify(error instanceof Error ? error.message : "Bild-.fish konnte nicht gespeichert werden.");
     }
   }
 
@@ -448,7 +490,7 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const track = tracks[Number(formData.get("track")) || 0];
 
-    setStatus("Song wird gepinnt...");
+    notify("Song wird als .fish gepinnt...");
     await createPost({
       postType: "song",
       text: String(formData.get("text") || "Song aus der Party-Playlist"),
@@ -458,7 +500,7 @@ export default function WallsPage() {
       songArtist: track.artist,
       songSrc: track.src
     } as WallPost);
-    setStatus("Song-Pin gespeichert.");
+    notify("Song als neues .fish gespeichert.");
     form.reset();
   }
 
@@ -473,11 +515,11 @@ export default function WallsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setStatus(data.message || "Folgen hat nicht geklappt.");
+      notify(data.message || "Folgen hat nicht geklappt.");
       return;
     }
 
-    setStatus(isFollowingViewProfile ? "Nicht mehr gefolgt." : "Gefolgt.");
+    notify(isFollowingViewProfile ? "Nicht mehr gefolgt." : "Gefolgt.");
     await loadWalls(false);
   }
 
@@ -542,18 +584,9 @@ export default function WallsPage() {
         </div>
       </section>
 
-      <section className="section walls-auth">
-        <div className="snow-window">
-          <div className="auth-tabs">
-            <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
-              Einloggen
-            </button>
-            <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")}>
-              Registrieren
-            </button>
-          </div>
-
-          {authMode === "login" ? (
+      {!activeProfile && (
+        <section className="section walls-auth">
+          <div className="snow-window">
             <form className="form wall-auth-form" onSubmit={login}>
               <p className="eyebrow">.fish Account</p>
               <h2>Einloggen</h2>
@@ -578,73 +611,84 @@ export default function WallsPage() {
               </label>
               <button className="aqua-button">Einloggen</button>
             </form>
-          ) : (
-            <form className="form wall-auth-form" onSubmit={createProfile}>
-              <p className="eyebrow">Neu auf .fish</p>
-              <h2>Registrieren</h2>
-              <label>
-                Name
-                <input name="name" required placeholder="Dein Name" />
-              </label>
-              <label>
-                Nutzername
-                <input name="handle" required placeholder="z. B. louki2003" />
-              </label>
-              <label>
-                Passwort
-                <input name="password" type="password" required placeholder="Nicht dein wichtiges Passwort nutzen" />
-              </label>
-              <label>
-                Profilbild
-                <input name="avatar" type="file" accept="image/*" />
-              </label>
-              <label>
-                Überschrift
-                <input name="headline" placeholder="z. B. Loukis .fish" />
-              </label>
-              <label>
-                Bio
-                <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
-              </label>
-              <label>
-                Farbe
-                <select name="theme" defaultValue="blue">
-                  {themeOptions.map((theme) => (
-                    <option value={theme.value} key={theme.value}>
-                      {theme.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Hintergrundfarbe
-                <input name="backgroundColor" type="color" defaultValue="#dcecff" />
-              </label>
-              <label>
-                Akzentfarbe
-                <input name="accentColor" type="color" defaultValue="#66b9f1" />
-              </label>
-              <label>
-                Muster
-                <select name="pattern" defaultValue="aqua">
-                  {patternOptions.map((pattern) => (
-                    <option value={pattern.value} key={pattern.value}>
-                      {pattern.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="check-label">
-                <input name="glitter" type="checkbox" defaultChecked />
-                Glitzer-Modus aktivieren
-              </label>
-              <button className="aqua-button">Account erstellen</button>
-            </form>
-          )}
-          {loading && <p>Pinnwände werden geladen...</p>}
-          {status && <p className="form-message done">{status}</p>}
-        </div>
-      </section>
+
+            <div className="fish-create-panel">
+              <button
+                className="secondary-button fish-create-toggle"
+                type="button"
+                onClick={() => setShowCreateFish((value) => !value)}
+              >
+                {showCreateFish ? ".fish erstellen schließen" : "Neues .fish erstellen"}
+              </button>
+
+              {showCreateFish && (
+                <form className="form wall-auth-form fish-register-panel" onSubmit={createProfile}>
+                  <p className="eyebrow">Neu auf .fish</p>
+                  <h2>.fish erstellen</h2>
+                  <label>
+                    Name
+                    <input name="name" required placeholder="Dein Name" />
+                  </label>
+                  <label>
+                    Nutzername
+                    <input name="handle" required placeholder="z. B. louki2003" />
+                  </label>
+                  <label>
+                    Passwort
+                    <input name="password" type="password" required placeholder="Nicht dein wichtiges Passwort nutzen" />
+                  </label>
+                  <label>
+                    Profilbild
+                    <input name="avatar" type="file" accept="image/*" />
+                  </label>
+                  <label>
+                    Überschrift
+                    <input name="headline" placeholder="z. B. Loukis .fish" />
+                  </label>
+                  <label>
+                    Bio
+                    <textarea name="bio" placeholder="Was soll auf deiner .fish stehen?" />
+                  </label>
+                  <label>
+                    Farbe
+                    <select name="theme" defaultValue="blue">
+                      {themeOptions.map((theme) => (
+                        <option value={theme.value} key={theme.value}>
+                          {theme.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Hintergrundfarbe
+                    <input name="backgroundColor" type="color" defaultValue="#dcecff" />
+                  </label>
+                  <label>
+                    Akzentfarbe
+                    <input name="accentColor" type="color" defaultValue="#66b9f1" />
+                  </label>
+                  <label>
+                    Muster
+                    <select name="pattern" defaultValue="aqua">
+                      {patternOptions.map((pattern) => (
+                        <option value={pattern.value} key={pattern.value}>
+                          {pattern.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="check-label">
+                    <input name="glitter" type="checkbox" defaultChecked />
+                    Glitzer-Modus aktivieren
+                  </label>
+                  <button className="aqua-button">.fish erstellen</button>
+                </form>
+              )}
+            </div>
+            {loading && <p>.fish Profile werden geladen...</p>}
+          </div>
+        </section>
+      )}
 
       {activeProfile && viewProfile && (
         <>
@@ -674,6 +718,25 @@ export default function WallsPage() {
                 Bilder auf meine Pinnwand laden
                 <input type="file" accept="image/*" multiple onChange={uploadPhotos} />
               </label>
+              {isAdmin ? (
+                <div className="fish-admin-box admin-on">
+                  <strong>Admin aktiv</strong>
+                  <span>Du bearbeitest das geöffnete .fish.</span>
+                </div>
+              ) : (
+                <form className="fish-admin-box" onSubmit={adminLogin}>
+                  <label>
+                    Admin
+                    <input
+                      value={adminPassword}
+                      onChange={(event) => setAdminPassword(event.target.value)}
+                      type="password"
+                      placeholder="Admin-Passwort"
+                    />
+                  </label>
+                  <button className="secondary-button">Admin</button>
+                </form>
+              )}
               <button className="secondary-button" type="button" onClick={logout}>
                 Ausloggen
               </button>
@@ -689,7 +752,13 @@ export default function WallsPage() {
           >
             <aside className="wall-directory">
               <p className="eyebrow">Alle .fish Profile</p>
-              {profiles.map((profile) => (
+              <input
+                className="fish-search"
+                value={profileSearch}
+                onChange={(event) => setProfileSearch(event.target.value)}
+                placeholder=".fish suchen"
+              />
+              {visibleProfiles.map((profile) => (
                 <button
                   className={profile.id === viewProfile.id ? "active" : ""}
                   key={profile.id}
@@ -698,6 +767,7 @@ export default function WallsPage() {
                   {profile.name}
                 </button>
               ))}
+              {!visibleProfiles.length && <p>Kein .fish gefunden.</p>}
             </aside>
 
             <article className="myspace-card">
@@ -730,29 +800,29 @@ export default function WallsPage() {
                     <p>{viewProfile.bio}</p>
                   </section>
 
-                  {activeProfile.id === viewProfile.id && (
+                  {editableProfile && (
                     <section className="wall-box">
-                      <h3>Meine .fish stylen</h3>
+                      <h3>{isAdmin && editableProfile.id !== activeProfile.id ? "Admin: .fish bearbeiten" : "Meine .fish stylen"}</h3>
                       <form className="pin-form" onSubmit={saveStyle}>
                         <label>
                           Überschrift
-                          <input name="headline" defaultValue={activeProfile.headline} />
+                          <input name="headline" defaultValue={editableProfile.headline} />
                         </label>
                         <label>
                           Status
-                          <input name="mood" defaultValue={activeProfile.mood} />
+                          <input name="mood" defaultValue={editableProfile.mood} />
                         </label>
                         <label>
                           Profil-Song
-                          <input name="song" defaultValue={activeProfile.song} />
+                          <input name="song" defaultValue={editableProfile.song} />
                         </label>
                         <label>
                           Bio
-                          <textarea name="bio" defaultValue={activeProfile.bio} />
+                          <textarea name="bio" defaultValue={editableProfile.bio} />
                         </label>
                         <label>
                           Theme
-                          <select name="theme" defaultValue={activeProfile.theme}>
+                          <select name="theme" defaultValue={editableProfile.theme}>
                             {themeOptions.map((theme) => (
                               <option value={theme.value} key={theme.value}>
                                 {theme.label}
@@ -762,15 +832,15 @@ export default function WallsPage() {
                         </label>
                         <label>
                           Hintergrund
-                          <input name="backgroundColor" type="color" defaultValue={activeProfile.backgroundColor} />
+                          <input name="backgroundColor" type="color" defaultValue={editableProfile.backgroundColor} />
                         </label>
                         <label>
                           Akzent
-                          <input name="accentColor" type="color" defaultValue={activeProfile.accentColor} />
+                          <input name="accentColor" type="color" defaultValue={editableProfile.accentColor} />
                         </label>
                         <label>
                           Muster
-                          <select name="pattern" defaultValue={activeProfile.pattern}>
+                          <select name="pattern" defaultValue={editableProfile.pattern}>
                             {patternOptions.map((pattern) => (
                               <option value={pattern.value} key={pattern.value}>
                                 {pattern.label}
@@ -780,7 +850,7 @@ export default function WallsPage() {
                         </label>
                         <label>
                           Schrift
-                          <select name="fontStyle" defaultValue={activeProfile.fontStyle}>
+                          <select name="fontStyle" defaultValue={editableProfile.fontStyle}>
                             {fontOptions.map((font) => (
                               <option value={font.value} key={font.value}>
                                 {font.label}
@@ -790,7 +860,7 @@ export default function WallsPage() {
                         </label>
                         <label>
                           Layout
-                          <select name="layoutDensity" defaultValue={activeProfile.layoutDensity}>
+                          <select name="layoutDensity" defaultValue={editableProfile.layoutDensity}>
                             {densityOptions.map((density) => (
                               <option value={density.value} key={density.value}>
                                 {density.label}
@@ -799,7 +869,7 @@ export default function WallsPage() {
                           </select>
                         </label>
                         <label className="check-label">
-                          <input name="glitter" type="checkbox" defaultChecked={activeProfile.glitter} />
+                          <input name="glitter" type="checkbox" defaultChecked={editableProfile.glitter} />
                           Glitzer-Modus
                         </label>
                         <button className="aqua-button">Style speichern</button>
@@ -839,7 +909,7 @@ export default function WallsPage() {
                   </section>
 
                   <section className="wall-box">
-                    <h3>Etwas anpinnen</h3>
+                    <h3>Neues .fish erstellen</h3>
                     <form className="pin-form" onSubmit={pinText}>
                       <label>
                         Nachricht
@@ -857,7 +927,7 @@ export default function WallsPage() {
                         Pin-Farbe
                         <input name="color" type="color" defaultValue="#ffffff" />
                       </label>
-                      <button className="aqua-button">Text pinnen</button>
+                      <button className="aqua-button">Text-.fish erstellen</button>
                     </form>
 
                     <form className="pin-form sub-pin-form" onSubmit={pinImage}>
@@ -878,7 +948,7 @@ export default function WallsPage() {
 
                     <form className="pin-form sub-pin-form" onSubmit={pinSong}>
                       <label>
-                        iPod-Song pinnen
+                        iPod-Song als .fish
                         <select name="track" defaultValue="0">
                           {tracks.map((track, index) => (
                             <option value={index} key={track.src}>
@@ -895,7 +965,7 @@ export default function WallsPage() {
                         Pin-Farbe
                         <input name="color" type="color" defaultValue="#eef6ff" />
                       </label>
-                      <button className="secondary-button">Song pinnen</button>
+                      <button className="secondary-button">Song-.fish erstellen</button>
                     </form>
                   </section>
 
@@ -944,6 +1014,7 @@ export default function WallsPage() {
           </section>
         </>
       )}
+      {toast && <div className="fish-toast">{toast}</div>}
     </main>
   );
 }

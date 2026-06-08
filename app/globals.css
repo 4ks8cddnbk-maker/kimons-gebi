@@ -1651,37 +1651,28 @@ footer {
   max-width: 840px;
 }
 
-.auth-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 18px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.52);
-  border: 1px solid #b4bfcd;
-  border-radius: 999px;
-  box-shadow: inset 0 1px 4px rgba(23, 40, 68, 0.12);
-}
-
-.auth-tabs button {
-  min-height: 38px;
-  color: #243247;
-  font-weight: 900;
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.auth-tabs button.active {
-  color: #fff;
-  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 5px 12px rgba(35, 106, 160, 0.22);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.35);
-}
-
 .wall-auth-form h2 {
   font-size: clamp(34px, 6vw, 58px);
+}
+
+.fish-create-panel {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(126, 143, 166, 0.32);
+}
+
+.fish-create-toggle {
+  width: 100%;
+}
+
+.fish-register-panel {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(126, 143, 166, 0.38);
+  border-radius: 8px;
+  animation: fish-pop 220ms ease both;
 }
 
 .wall-account-bar {
@@ -1690,8 +1681,34 @@ footer {
 }
 
 .wall-account-bar .wall-switcher {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.75fr) minmax(180px, 0.7fr) auto;
   align-items: end;
+}
+
+.fish-admin-box {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.fish-admin-box input {
+  min-height: 38px;
+}
+
+.fish-admin-box.admin-on {
+  align-self: stretch;
+  padding: 12px;
+  color: #18582e;
+  background: linear-gradient(#f1fff5, #d7f4df);
+  border: 1px solid #86d89c;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.fish-admin-box.admin-on span {
+  color: #41684b;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .wall-music-player {
@@ -1875,6 +1892,17 @@ footer {
   border: 1px solid rgba(154, 166, 184, 0.72);
   border-radius: 8px;
   box-shadow: var(--shadow), inset 0 1px 0 #fff;
+}
+
+.fish-search {
+  min-height: 38px;
+  padding: 9px 10px;
+  color: #223149;
+  font-weight: 800;
+  background: linear-gradient(#fff, #e8eef6);
+  border: 1px solid #aeb9c8;
+  border-radius: 7px;
+  box-shadow: inset 0 1px 3px rgba(23, 40, 68, 0.12);
 }
 
 .myspace-card {
@@ -2234,6 +2262,51 @@ footer {
 .check-label input {
   width: auto;
   min-height: auto;
+}
+
+.fish-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 40;
+  width: min(520px, calc(100vw - 32px));
+  padding: 15px 18px;
+  color: #173249;
+  font-size: 15px;
+  font-weight: 950;
+  text-align: center;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.84), rgba(235, 244, 255, 0.9)),
+    repeating-linear-gradient(90deg, rgba(102, 185, 241, 0.1) 0 1px, transparent 1px 5px);
+  border: 1px solid #8fa6bd;
+  border-radius: 999px;
+  box-shadow: 0 18px 38px rgba(23, 40, 68, 0.24), inset 0 1px 0 #fff;
+  transform: translateX(-50%);
+  animation: fish-toast-in 240ms ease both;
+}
+
+@keyframes fish-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fish-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .wall-post p {
