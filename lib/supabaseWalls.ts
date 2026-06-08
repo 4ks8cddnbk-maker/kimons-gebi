@@ -2,8 +2,15 @@ export type SupabaseWallPost = {
   id: string;
   authorId: string;
   targetId: string;
+  collaboratorId: string;
+  postType: string;
   text: string;
   sticker: string;
+  color: string;
+  mediaUrl: string;
+  songTitle: string;
+  songArtist: string;
+  songSrc: string;
   createdAt: string;
 };
 
@@ -20,7 +27,16 @@ export type SupabaseProfile = {
   stickerPack: string;
   headline: string;
   glitter: boolean;
+  backgroundColor: string;
+  accentColor: string;
+  fontStyle: string;
+  layoutDensity: string;
   photos: string[];
+};
+
+export type SupabaseFollow = {
+  followerId: string;
+  followingId: string;
 };
 
 type ProfileRow = {
@@ -36,6 +52,10 @@ type ProfileRow = {
   sticker_pack: string | null;
   headline: string | null;
   glitter: boolean | null;
+  background_color: string | null;
+  accent_color: string | null;
+  font_style: string | null;
+  layout_density: string | null;
   password_hash?: string | null;
   photos: string[] | null;
   created_at?: string;
@@ -45,9 +65,21 @@ type PostRow = {
   id: string;
   author_id: string;
   target_id: string;
+  collaborator_id: string | null;
+  post_type: string | null;
   text: string;
   sticker: string;
+  color: string | null;
+  media_url: string | null;
+  song_title: string | null;
+  song_artist: string | null;
+  song_src: string | null;
   created_at: string;
+};
+
+type FollowRow = {
+  follower_id: string;
+  following_id: string;
 };
 
 export const defaultWallProfile: SupabaseProfile = {
@@ -63,6 +95,10 @@ export const defaultWallProfile: SupabaseProfile = {
   stickerPack: "party",
   headline: "Willkommen auf Kimons Pinnwand",
   glitter: true,
+  backgroundColor: "#dcecff",
+  accentColor: "#66b9f1",
+  fontStyle: "lucida",
+  layoutDensity: "cozy",
   photos: []
 };
 
@@ -94,6 +130,10 @@ function toProfile(row: ProfileRow): SupabaseProfile {
     stickerPack: row.sticker_pack || "party",
     headline: row.headline || "Meine Pinnwand",
     glitter: Boolean(row.glitter),
+    backgroundColor: row.background_color || "#dcecff",
+    accentColor: row.accent_color || "#66b9f1",
+    fontStyle: row.font_style || "lucida",
+    layoutDensity: row.layout_density || "cozy",
     photos: row.photos || []
   };
 }
@@ -112,6 +152,10 @@ function toProfileRow(profile: SupabaseProfile, passwordHash?: string) {
     sticker_pack: profile.stickerPack,
     headline: profile.headline,
     glitter: profile.glitter,
+    background_color: profile.backgroundColor,
+    accent_color: profile.accentColor,
+    font_style: profile.fontStyle,
+    layout_density: profile.layoutDensity,
     photos: profile.photos,
     ...(passwordHash ? { password_hash: passwordHash } : {})
   };
@@ -122,8 +166,15 @@ function toPost(row: PostRow): SupabaseWallPost {
     id: row.id,
     authorId: row.author_id,
     targetId: row.target_id,
+    collaboratorId: row.collaborator_id || "",
+    postType: row.post_type || "text",
     text: row.text,
     sticker: row.sticker,
+    color: row.color || "#ffffff",
+    mediaUrl: row.media_url || "",
+    songTitle: row.song_title || "",
+    songArtist: row.song_artist || "",
+    songSrc: row.song_src || "",
     createdAt: row.created_at
   };
 }
@@ -133,8 +184,15 @@ function toPostRow(post: SupabaseWallPost) {
     id: post.id,
     author_id: post.authorId,
     target_id: post.targetId,
+    collaborator_id: post.collaboratorId || null,
+    post_type: post.postType || "text",
     text: post.text,
-    sticker: post.sticker
+    sticker: post.sticker,
+    color: post.color,
+    media_url: post.mediaUrl || null,
+    song_title: post.songTitle || null,
+    song_artist: post.songArtist || null,
+    song_src: post.songSrc || null
   };
 }
 
@@ -204,7 +262,11 @@ export async function updateWallProfile(id: string, profile: Partial<SupabasePro
     ...(profile.pattern !== undefined ? { pattern: profile.pattern } : {}),
     ...(profile.stickerPack !== undefined ? { sticker_pack: profile.stickerPack } : {}),
     ...(profile.headline !== undefined ? { headline: profile.headline } : {}),
-    ...(profile.glitter !== undefined ? { glitter: profile.glitter } : {})
+    ...(profile.glitter !== undefined ? { glitter: profile.glitter } : {}),
+    ...(profile.backgroundColor !== undefined ? { background_color: profile.backgroundColor } : {}),
+    ...(profile.accentColor !== undefined ? { accent_color: profile.accentColor } : {}),
+    ...(profile.fontStyle !== undefined ? { font_style: profile.fontStyle } : {}),
+    ...(profile.layoutDensity !== undefined ? { layout_density: profile.layoutDensity } : {})
   };
   const response = await supabaseRest(`wall_profiles?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -242,6 +304,37 @@ export async function createWallPost(post: Omit<SupabaseWallPost, "id" | "create
   });
   const rows = (await response.json()) as PostRow[];
   return toPost(rows[0]);
+}
+
+export async function listWallFollows() {
+  const response = await supabaseRest("wall_follows?select=*");
+  const rows = (await response.json()) as FollowRow[];
+  return rows.map((row) => ({
+    followerId: row.follower_id,
+    followingId: row.following_id
+  }));
+}
+
+export async function followWallProfile(followerId: string, followingId: string) {
+  const response = await supabaseRest("wall_follows", {
+    method: "POST",
+    body: JSON.stringify({ follower_id: followerId, following_id: followingId })
+  });
+  const rows = (await response.json()) as FollowRow[];
+  return {
+    followerId: rows[0].follower_id,
+    followingId: rows[0].following_id
+  };
+}
+
+export async function unfollowWallProfile(followerId: string, followingId: string) {
+  await supabaseRest(
+    `wall_follows?follower_id=eq.${encodeURIComponent(followerId)}&following_id=eq.${encodeURIComponent(followingId)}`,
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    }
+  );
 }
 
 export async function uploadWallImage(file: File) {

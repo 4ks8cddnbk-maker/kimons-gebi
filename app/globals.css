@@ -2048,94 +2048,46 @@ footer {
   border-radius: 8px;
 }
 
-.profile-stickers {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.profile-stickers span {
-  display: grid;
-  place-items: center;
-  min-height: 50px;
-  background: linear-gradient(#fff, #dbe4f0);
-  border: 1px solid #aeb9c8;
-  border-radius: 8px;
-  box-shadow: inset 0 1px 0 #fff, 0 7px 14px rgba(23, 40, 68, 0.1);
-}
-
-.pack-party .profile-stickers span:nth-child(1)::before {
-  content: "VIP";
-}
-
-.pack-party .profile-stickers span:nth-child(2)::before {
-  content: "23";
-}
-
-.pack-party .profile-stickers span:nth-child(3)::before {
-  content: "PLAY";
-}
-
-.pack-glam .profile-stickers span:nth-child(1)::before {
-  content: "GLAM";
-}
-
-.pack-glam .profile-stickers span:nth-child(2)::before {
-  content: "TOP";
-}
-
-.pack-glam .profile-stickers span:nth-child(3)::before {
-  content: "SHINE";
-}
-
-.pack-retro .profile-stickers span:nth-child(1)::before {
-  content: "WWW";
-}
-
-.pack-retro .profile-stickers span:nth-child(2)::before {
-  content: "BLOG";
-}
-
-.pack-retro .profile-stickers span:nth-child(3)::before {
-  content: "2006";
-}
-
-.pack-karaoke .profile-stickers span:nth-child(1)::before {
-  content: "MIC";
-}
-
-.pack-karaoke .profile-stickers span:nth-child(2)::before {
-  content: "DUET";
-}
-
-.pack-karaoke .profile-stickers span:nth-child(3)::before {
-  content: "STAR";
-}
-
-.profile-stickers span::before {
-  color: #fff;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.8px;
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.32);
-}
-
-.profile-stickers span:nth-child(1) {
-  background: linear-gradient(#ff9dca, #d34c89);
-}
-
-.profile-stickers span:nth-child(2) {
-  background: linear-gradient(#9de5ff, #277fbd);
-}
-
-.profile-stickers span:nth-child(3) {
-  background: linear-gradient(#b9ed8f, #32a556);
-}
-
 .profile-main {
   display: grid;
   gap: 16px;
+}
+
+.font-georgia .myspace-card {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.font-mono .myspace-card {
+  font-family: "Courier New", Courier, monospace;
+}
+
+.font-verdana .myspace-card {
+  font-family: Verdana, Geneva, sans-serif;
+}
+
+.density-compact .profile-grid {
+  gap: 12px;
+  padding: 14px;
+}
+
+.density-compact .profile-main {
+  gap: 10px;
+}
+
+.density-compact .wall-box,
+.density-compact .profile-sidebar {
+  padding: 12px;
+}
+
+.density-loud .profile-grid {
+  gap: 28px;
+  padding: clamp(22px, 4vw, 42px);
+}
+
+.density-loud .wall-box,
+.density-loud .profile-sidebar {
+  border-width: 2px;
+  box-shadow: inset 0 1px 0 #fff, 0 18px 34px color-mix(in srgb, var(--wall-a), transparent 80%);
 }
 
 .wall-box {
@@ -2185,6 +2137,12 @@ footer {
   gap: 12px;
 }
 
+.sub-pin-form {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(126, 143, 166, 0.34);
+}
+
 .wall-posts {
   display: grid;
   gap: 12px;
@@ -2194,7 +2152,7 @@ footer {
   position: relative;
   padding: 16px 18px;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56)),
+    linear-gradient(color-mix(in srgb, var(--pin-color, #fff), white 28%), color-mix(in srgb, var(--pin-color, #fff), #dbe4f0 28%)),
     repeating-linear-gradient(0deg, rgba(101, 183, 242, 0.1) 0 1px, transparent 1px 22px);
   border: 1px solid rgba(126, 143, 166, 0.52);
   border-radius: 8px;
@@ -2222,6 +2180,49 @@ footer {
   background: linear-gradient(var(--wall-a), #24466f);
   border-radius: 999px;
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.post-image {
+  width: 100%;
+  max-height: 420px;
+  margin: 8px 0 12px;
+  object-fit: cover;
+  background: #fff;
+  border: 6px solid #fff;
+  border-radius: 5px;
+  box-shadow: 0 10px 22px rgba(23, 40, 68, 0.16);
+}
+
+.post-song {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 12px;
+  padding: 13px;
+  color: #213047;
+  background: linear-gradient(#f8fbff, #dce7f4);
+  border: 1px solid #aeb9c8;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.post-song button,
+.follow-button {
+  min-height: 34px;
+  padding: 7px 12px;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
+  border: 1px solid rgba(20, 80, 137, 0.85);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.follow-button {
+  width: 100%;
+  margin-top: 12px;
 }
 
 .check-label {

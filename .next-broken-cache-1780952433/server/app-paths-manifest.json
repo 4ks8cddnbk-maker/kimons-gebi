@@ -1,0 +1,16 @@
+{
+  "/api/admin/logout/route": "app/api/admin/logout/route.js",
+  "/api/admin/login/route": "app/api/admin/login/route.js",
+  "/api/photos/route": "app/api/photos/route.js",
+  "/api/karaoke/route": "app/api/karaoke/route.js",
+  "/api/site-login/route": "app/api/site-login/route.js",
+  "/api/walls/login/route": "app/api/walls/login/route.js",
+  "/api/walls/profiles/route": "app/api/walls/profiles/route.js",
+  "/api/walls/posts/route": "app/api/walls/posts/route.js",
+  "/api/walls/upload/route": "app/api/walls/upload/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/walls/page": "app/walls/page.js",
+  "/enter/page": "app/enter/page.js",
+  "/page": "app/page.js"
+}

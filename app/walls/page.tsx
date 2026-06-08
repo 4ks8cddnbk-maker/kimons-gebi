@@ -1,13 +1,21 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 
 type WallPost = {
   id: string;
   authorId: string;
   targetId: string;
+  collaboratorId: string;
+  postType: string;
   text: string;
   sticker: string;
+  color: string;
+  mediaUrl: string;
+  songTitle: string;
+  songArtist: string;
+  songSrc: string;
   createdAt: string;
 };
 
@@ -24,7 +32,16 @@ type Profile = {
   stickerPack: string;
   headline: string;
   glitter: boolean;
+  backgroundColor: string;
+  accentColor: string;
+  fontStyle: string;
+  layoutDensity: string;
   photos: string[];
+};
+
+type Follow = {
+  followerId: string;
+  followingId: string;
 };
 
 const tracks = [
@@ -37,8 +54,6 @@ const stickerOptions = [
   "Aqua Star",
   "Mixtape",
   "Karaoke",
-  "Party Pin",
-  "Snow Leopard",
   "Glitter Comment",
   "Top 8 Energy",
   "Afterparty Seal",
@@ -46,12 +61,12 @@ const stickerOptions = [
   "Main Character"
 ];
 const themeOptions = [
-  { value: "blue", label: "Aqua Blau" },
-  { value: "green", label: "Limewire Gruen" },
-  { value: "pink", label: "MySpace Pink" },
-  { value: "gold", label: "iPod Gold" },
-  { value: "purple", label: "Neon Lila" },
-  { value: "black", label: "Black Chrome" }
+  { value: "blue", label: "Aqua Blau", accent: "#66b9f1", background: "#dcecff" },
+  { value: "green", label: "Limewire Gruen", accent: "#33b75a", background: "#dff7e5" },
+  { value: "pink", label: "MySpace Pink", accent: "#ec6fa9", background: "#ffe4f0" },
+  { value: "gold", label: "iPod Gold", accent: "#d9a626", background: "#fff3ca" },
+  { value: "purple", label: "Neon Lila", accent: "#8a6dff", background: "#ece8ff" },
+  { value: "black", label: "Black Chrome", accent: "#20293a", background: "#dfe4ec" }
 ];
 const patternOptions = [
   { value: "aqua", label: "Aqua Streifen" },
@@ -60,11 +75,16 @@ const patternOptions = [
   { value: "hearts", label: "Hearts" },
   { value: "scanlines", label: "CRT Lines" }
 ];
-const stickerPackOptions = [
-  { value: "party", label: "Party Sticker" },
-  { value: "glam", label: "Glam Sticker" },
-  { value: "retro", label: "Retro Web" },
-  { value: "karaoke", label: "Karaoke Pack" }
+const fontOptions = [
+  { value: "lucida", label: "Lucida Grande" },
+  { value: "georgia", label: "Georgia Blog" },
+  { value: "mono", label: "Terminal Mono" },
+  { value: "verdana", label: "Verdana Web" }
+];
+const densityOptions = [
+  { value: "compact", label: "Kompakt" },
+  { value: "cozy", label: "Normal" },
+  { value: "loud", label: "Maximal MySpace" }
 ];
 
 function createId() {
@@ -83,6 +103,7 @@ function normalizeHandle(handle: string) {
 export default function WallsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<WallPost[]>([]);
+  const [follows, setFollows] = useState<Follow[]>([]);
   const [activeProfileId, setActiveProfileId] = useState("");
   const [viewProfileId, setViewProfileId] = useState("");
   const [status, setStatus] = useState("");
@@ -101,12 +122,28 @@ export default function WallsPage() {
     () =>
       viewProfile
         ? posts
-            .filter((post) => post.targetId === viewProfile.id)
+            .filter((post) => post.targetId === viewProfile.id || post.collaboratorId === viewProfile.id)
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         : [],
     [posts, viewProfile]
   );
-  const topFriends = viewProfile ? profiles.filter((profile) => profile.id !== viewProfile.id).slice(0, 6) : [];
+  const mutualFriends = useMemo(() => {
+    if (!viewProfile) return [];
+
+    return profiles.filter((profile) => {
+      if (profile.id === viewProfile.id) return false;
+      const followsThem = follows.some(
+        (follow) => follow.followerId === viewProfile.id && follow.followingId === profile.id
+      );
+      const followsBack = follows.some(
+        (follow) => follow.followerId === profile.id && follow.followingId === viewProfile.id
+      );
+      return followsThem && followsBack;
+    });
+  }, [follows, profiles, viewProfile]);
+  const isFollowingViewProfile =
+    Boolean(activeProfile && viewProfile) &&
+    follows.some((follow) => follow.followerId === activeProfile?.id && follow.followingId === viewProfile?.id);
 
   useEffect(() => {
     loadWalls();
@@ -122,6 +159,17 @@ export default function WallsPage() {
     return () => window.clearInterval(interval);
   }, [activeProfileId]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.load();
+
+    if (isPlaying) {
+      audio.play().catch(() => setIsPlaying(false));
+    }
+  }, [activeTrack, isPlaying]);
+
   async function loadWalls(showSpinner = true) {
     if (showSpinner) setLoading(true);
 
@@ -136,6 +184,7 @@ export default function WallsPage() {
       const nextActiveProfileId = profilesData.activeProfileId || "";
 
       setProfiles(nextProfiles);
+      setFollows(profilesData.follows || []);
       setPosts(postsData.posts || []);
       setActiveProfileId(nextActiveProfileId);
       setViewProfileId((currentId) => {
@@ -153,9 +202,10 @@ export default function WallsPage() {
     }
   }
 
-  async function uploadFiles(files: File[]) {
+  async function uploadFiles(files: File[], mode: "profile" | "pin" = "profile") {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
+    formData.append("mode", mode);
 
     const response = await fetch("/api/walls/upload", {
       method: "POST",
@@ -208,6 +258,7 @@ export default function WallsPage() {
     const name = String(formData.get("name") || "").trim();
     const handle = normalizeHandle(String(formData.get("handle") || name));
     const password = String(formData.get("password") || "");
+    const selectedTheme = themeOptions.find((theme) => theme.value === String(formData.get("theme"))) || themeOptions[0];
 
     if (!name || !handle || !password) {
       setStatus("Bitte Name, Nutzername und Passwort eintragen.");
@@ -220,7 +271,7 @@ export default function WallsPage() {
 
     try {
       if (file instanceof File && file.size) {
-        const upload = await uploadFiles([file]);
+        const upload = await uploadFiles([file], "pin");
         avatar = upload.urls[0] || "";
       }
     } catch (error) {
@@ -236,11 +287,15 @@ export default function WallsPage() {
       bio: String(formData.get("bio") || "Noch keine Bio, aber bestimmt eine starke Pinnwand."),
       mood: String(formData.get("mood") || "online"),
       song: String(formData.get("song") || "Karaoke Song offen"),
-      theme: String(formData.get("theme") || "blue"),
+      theme: selectedTheme.value,
       pattern: String(formData.get("pattern") || "aqua"),
-      stickerPack: String(formData.get("stickerPack") || "party"),
-      headline: String(formData.get("headline") || `${name}s Pinnwand`),
+      stickerPack: "party",
+      headline: String(formData.get("headline") || `${name}s .fish`),
       glitter: formData.get("glitter") === "on",
+      backgroundColor: String(formData.get("backgroundColor") || selectedTheme.background),
+      accentColor: String(formData.get("accentColor") || selectedTheme.accent),
+      fontStyle: String(formData.get("fontStyle") || "lucida"),
+      layoutDensity: String(formData.get("layoutDensity") || "cozy"),
       photos: []
     };
 
@@ -291,7 +346,10 @@ export default function WallsPage() {
       song: String(formData.get("song") || activeProfile.song),
       theme: String(formData.get("theme") || activeProfile.theme),
       pattern: String(formData.get("pattern") || activeProfile.pattern),
-      stickerPack: String(formData.get("stickerPack") || activeProfile.stickerPack),
+      backgroundColor: String(formData.get("backgroundColor") || activeProfile.backgroundColor),
+      accentColor: String(formData.get("accentColor") || activeProfile.accentColor),
+      fontStyle: String(formData.get("fontStyle") || activeProfile.fontStyle),
+      layoutDensity: String(formData.get("layoutDensity") || activeProfile.layoutDensity),
       glitter: formData.get("glitter") === "on"
     };
 
@@ -311,25 +369,15 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
-  async function pinPost(event: FormEvent<HTMLFormElement>) {
+  async function createPost(payload: Partial<WallPost>) {
     if (!viewProfile) return;
-
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const text = String(formData.get("text") || "").trim();
-
-    if (!text) return;
-
-    setStatus("Pin wird gespeichert...");
 
     const response = await fetch("/api/walls/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         targetId: viewProfile.id,
-        text,
-        sticker: String(formData.get("sticker") || stickerOptions[0])
+        ...payload
       })
     });
     const data = await response.json();
@@ -339,14 +387,108 @@ export default function WallsPage() {
       return;
     }
 
-    setStatus(`Auf ${viewProfile.name}s Pinnwand gepinnt.`);
-    form.reset();
     await loadWalls(false);
   }
 
-  function toggleMusic() {
+  async function pinText(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const text = String(formData.get("text") || "").trim();
+
+    if (!text) return;
+
+    setStatus("Pin wird gespeichert...");
+    await createPost({
+      postType: "text",
+      text,
+      sticker: String(formData.get("sticker") || stickerOptions[0]),
+      color: String(formData.get("color") || "#ffffff")
+    } as WallPost);
+    setStatus("Pin gespeichert.");
+    form.reset();
+  }
+
+  async function pinImage(event: FormEvent<HTMLFormElement>) {
+    if (!viewProfile || !activeProfile) return;
+
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const file = formData.get("image");
+    const text = String(formData.get("text") || "").trim();
+
+    if (!(file instanceof File) || !file.size) {
+      setStatus("Bitte ein Bild auswählen.");
+      return;
+    }
+
+    setStatus("Bild-Pin wird hochgeladen...");
+
+    try {
+      const upload = await uploadFiles([file], "pin");
+      await createPost({
+        postType: "image",
+        text: text || "Bild-Pin",
+        sticker: "Collab Pin",
+        color: String(formData.get("color") || "#ffffff"),
+        mediaUrl: upload.urls[0],
+        collaboratorId: viewProfile.id !== activeProfile.id ? viewProfile.id : ""
+      } as WallPost);
+      setStatus("Bild als Collab-Pin gespeichert.");
+      form.reset();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Bild-Pin konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function pinSong(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const track = tracks[Number(formData.get("track")) || 0];
+
+    setStatus("Song wird gepinnt...");
+    await createPost({
+      postType: "song",
+      text: String(formData.get("text") || "Song aus der Party-Playlist"),
+      sticker: "iPod Approved",
+      color: String(formData.get("color") || "#eef6ff"),
+      songTitle: track.title,
+      songArtist: track.artist,
+      songSrc: track.src
+    } as WallPost);
+    setStatus("Song-Pin gespeichert.");
+    form.reset();
+  }
+
+  async function toggleFollow() {
+    if (!activeProfile || !viewProfile || activeProfile.id === viewProfile.id) return;
+
+    const response = await fetch("/api/walls/follows", {
+      method: isFollowingViewProfile ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ followingId: viewProfile.id })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.message || "Folgen hat nicht geklappt.");
+      return;
+    }
+
+    setStatus(isFollowingViewProfile ? "Nicht mehr gefolgt." : "Gefolgt.");
+    await loadWalls(false);
+  }
+
+  function toggleMusic(src?: string) {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (src) {
+      const trackIndex = tracks.findIndex((track) => track.src === src);
+      if (trackIndex >= 0) setActiveTrack(trackIndex);
+    }
 
     if (audio.paused) {
       audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
@@ -361,16 +503,12 @@ export default function WallsPage() {
     setActiveTrack((currentTrack) => (currentTrack + 1) % tracks.length);
   }
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.load();
-
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
-    }
-  }, [activeTrack, isPlaying]);
+  const wallStyle =
+    viewProfile &&
+    ({
+      "--wall-a": viewProfile.accentColor,
+      "--wall-b": viewProfile.backgroundColor
+    } as CSSProperties);
 
   return (
     <main className="walls-page">
@@ -381,10 +519,10 @@ export default function WallsPage() {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
       />
-      <nav className="topbar" aria-label="Pinnwand Navigation">
+      <nav className="topbar" aria-label=".fish Navigation">
         <div>
           <a href="/">Zur Partyseite</a>
-          {activeProfile && <a href="#wall">Pinnwände</a>}
+          {activeProfile && <a href="#wall">.fish</a>}
         </div>
       </nav>
 
@@ -395,11 +533,11 @@ export default function WallsPage() {
             <span />
             <span />
           </div>
-          <p className="eyebrow">KimonSpace</p>
-          <h1>Pinnwände</h1>
+          <p className="eyebrow">.fish</p>
+          <h1>.fish</h1>
           <p className="hero-copy">
-            Retro-Profile, Fotos, Pins und ein bisschen MySpace-Gefühl. Erst einloggen oder registrieren, dann
-            öffnet sich der Pinnwand-Bereich.
+            Retro-Profile, Fotos, Pins, Playlist-Songs und echte gegenseitige Freundschaften. Erst einloggen oder
+            registrieren, dann öffnet sich dein Bereich.
           </p>
         </div>
       </section>
@@ -417,7 +555,7 @@ export default function WallsPage() {
 
           {authMode === "login" ? (
             <form className="form wall-auth-form" onSubmit={login}>
-              <p className="eyebrow">Account</p>
+              <p className="eyebrow">.fish Account</p>
               <h2>Einloggen</h2>
               <label>
                 Nutzername
@@ -442,7 +580,7 @@ export default function WallsPage() {
             </form>
           ) : (
             <form className="form wall-auth-form" onSubmit={createProfile}>
-              <p className="eyebrow">Neu hier</p>
+              <p className="eyebrow">Neu auf .fish</p>
               <h2>Registrieren</h2>
               <label>
                 Name
@@ -462,15 +600,11 @@ export default function WallsPage() {
               </label>
               <label>
                 Überschrift
-                <input name="headline" placeholder="z. B. Loukis Ecke im Internet" />
+                <input name="headline" placeholder="z. B. Loukis .fish" />
               </label>
               <label>
-                Status
-                <input name="mood" placeholder="z. B. bereit fuer Karaoke" />
-              </label>
-              <label>
-                Profil-Song
-                <input name="song" placeholder="Dein Song des Abends" />
+                Bio
+                <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
               </label>
               <label>
                 Farbe
@@ -483,6 +617,14 @@ export default function WallsPage() {
                 </select>
               </label>
               <label>
+                Hintergrundfarbe
+                <input name="backgroundColor" type="color" defaultValue="#dcecff" />
+              </label>
+              <label>
+                Akzentfarbe
+                <input name="accentColor" type="color" defaultValue="#66b9f1" />
+              </label>
+              <label>
                 Muster
                 <select name="pattern" defaultValue="aqua">
                   {patternOptions.map((pattern) => (
@@ -492,23 +634,9 @@ export default function WallsPage() {
                   ))}
                 </select>
               </label>
-              <label>
-                Sticker-Pack
-                <select name="stickerPack" defaultValue="party">
-                  {stickerPackOptions.map((pack) => (
-                    <option value={pack.value} key={pack.value}>
-                      {pack.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="check-label">
                 <input name="glitter" type="checkbox" defaultChecked />
                 Glitzer-Modus aktivieren
-              </label>
-              <label>
-                Kurzer Text
-                <textarea name="bio" placeholder="Was soll auf deiner Pinnwand stehen?" />
               </label>
               <button className="aqua-button">Account erstellen</button>
             </form>
@@ -521,12 +649,12 @@ export default function WallsPage() {
       {activeProfile && viewProfile && (
         <>
           <aside className="wall-music-player">
-            <strong>KimonSpace Player</strong>
+            <strong>.fish Player</strong>
             <span>
               {tracks[activeTrack].title} - {tracks[activeTrack].artist}
             </span>
             <div>
-              <button onClick={toggleMusic}>{isPlaying ? "Pause" : "Play"}</button>
+              <button onClick={() => toggleMusic()}>{isPlaying ? "Pause" : "Play"}</button>
               <button onClick={nextTrack}>Next</button>
             </div>
           </aside>
@@ -554,12 +682,13 @@ export default function WallsPage() {
 
           <section
             id="wall"
-            className={`section wall-stage theme-${viewProfile.theme} pattern-${viewProfile.pattern} ${
+            className={`section wall-stage theme-${viewProfile.theme} pattern-${viewProfile.pattern} font-${viewProfile.fontStyle} density-${viewProfile.layoutDensity} ${
               viewProfile.glitter ? "glitter-on" : ""
-            } pack-${viewProfile.stickerPack}`}
+            }`}
+            style={wallStyle || undefined}
           >
             <aside className="wall-directory">
-              <p className="eyebrow">Alle Pinnwände</p>
+              <p className="eyebrow">Alle .fish Profile</p>
               {profiles.map((profile) => (
                 <button
                   className={profile.id === viewProfile.id ? "active" : ""}
@@ -576,7 +705,7 @@ export default function WallsPage() {
                 <span />
                 <span />
                 <span />
-                <strong>{viewProfile.headline || `${viewProfile.name}s Pinnwand`}</strong>
+                <strong>{viewProfile.headline || `${viewProfile.name}s .fish`}</strong>
               </div>
 
               <div className="profile-grid">
@@ -588,11 +717,11 @@ export default function WallsPage() {
                   <p>@{viewProfile.handle}</p>
                   <div className="status-pill">Status: {viewProfile.mood}</div>
                   <div className="profile-song">Profil-Song: {viewProfile.song}</div>
-                  <div className="profile-stickers" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                  {activeProfile.id !== viewProfile.id && (
+                    <button className="aqua-button follow-button" onClick={toggleFollow}>
+                      {isFollowingViewProfile ? "Gefolgt" : "Folgen"}
+                    </button>
+                  )}
                 </div>
 
                 <div className="profile-main">
@@ -603,7 +732,7 @@ export default function WallsPage() {
 
                   {activeProfile.id === viewProfile.id && (
                     <section className="wall-box">
-                      <h3>Meine Wand stylen</h3>
+                      <h3>Meine .fish stylen</h3>
                       <form className="pin-form" onSubmit={saveStyle}>
                         <label>
                           Überschrift
@@ -622,7 +751,7 @@ export default function WallsPage() {
                           <textarea name="bio" defaultValue={activeProfile.bio} />
                         </label>
                         <label>
-                          Farbe
+                          Theme
                           <select name="theme" defaultValue={activeProfile.theme}>
                             {themeOptions.map((theme) => (
                               <option value={theme.value} key={theme.value}>
@@ -630,6 +759,14 @@ export default function WallsPage() {
                               </option>
                             ))}
                           </select>
+                        </label>
+                        <label>
+                          Hintergrund
+                          <input name="backgroundColor" type="color" defaultValue={activeProfile.backgroundColor} />
+                        </label>
+                        <label>
+                          Akzent
+                          <input name="accentColor" type="color" defaultValue={activeProfile.accentColor} />
                         </label>
                         <label>
                           Muster
@@ -642,11 +779,21 @@ export default function WallsPage() {
                           </select>
                         </label>
                         <label>
-                          Sticker-Pack
-                          <select name="stickerPack" defaultValue={activeProfile.stickerPack}>
-                            {stickerPackOptions.map((pack) => (
-                              <option value={pack.value} key={pack.value}>
-                                {pack.label}
+                          Schrift
+                          <select name="fontStyle" defaultValue={activeProfile.fontStyle}>
+                            {fontOptions.map((font) => (
+                              <option value={font.value} key={font.value}>
+                                {font.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Layout
+                          <select name="layoutDensity" defaultValue={activeProfile.layoutDensity}>
+                            {densityOptions.map((density) => (
+                              <option value={density.value} key={density.value}>
+                                {density.label}
                               </option>
                             ))}
                           </select>
@@ -663,8 +810,8 @@ export default function WallsPage() {
                   <section className="wall-box">
                     <h3>Top Freunde</h3>
                     <div className="top-friends">
-                      {topFriends.length ? (
-                        topFriends.map((friend) => (
+                      {mutualFriends.length ? (
+                        mutualFriends.map((friend) => (
                           <button key={friend.id} onClick={() => setViewProfileId(friend.id)}>
                             <span className="mini-avatar">
                               {friend.avatar ? <img src={friend.avatar} alt="" /> : friend.name[0]}
@@ -673,7 +820,7 @@ export default function WallsPage() {
                           </button>
                         ))
                       ) : (
-                        <p>Noch keine anderen Pinnwände.</p>
+                        <p>Top Freunde erscheinen erst, wenn beide Profile sich gegenseitig folgen.</p>
                       )}
                     </div>
                   </section>
@@ -693,7 +840,11 @@ export default function WallsPage() {
 
                   <section className="wall-box">
                     <h3>Etwas anpinnen</h3>
-                    <form className="pin-form" onSubmit={pinPost}>
+                    <form className="pin-form" onSubmit={pinText}>
+                      <label>
+                        Nachricht
+                        <textarea name="text" placeholder={`Schreib etwas auf ${viewProfile.name}s Wand`} required />
+                      </label>
                       <label>
                         Sticker
                         <select name="sticker" defaultValue={stickerOptions[0]}>
@@ -703,10 +854,48 @@ export default function WallsPage() {
                         </select>
                       </label>
                       <label>
-                        Nachricht
-                        <textarea name="text" placeholder={`Schreib etwas auf ${viewProfile.name}s Wand`} required />
+                        Pin-Farbe
+                        <input name="color" type="color" defaultValue="#ffffff" />
                       </label>
-                      <button className="aqua-button">Auf die Wand pinnen</button>
+                      <button className="aqua-button">Text pinnen</button>
+                    </form>
+
+                    <form className="pin-form sub-pin-form" onSubmit={pinImage}>
+                      <label>
+                        Bild als Collab-Pin
+                        <input name="image" type="file" accept="image/*" />
+                      </label>
+                      <label>
+                        Caption
+                        <input name="text" placeholder="Kurzer Text zum Bild" />
+                      </label>
+                      <label>
+                        Pin-Farbe
+                        <input name="color" type="color" defaultValue="#fff8dc" />
+                      </label>
+                      <button className="secondary-button">Bild pinnen</button>
+                    </form>
+
+                    <form className="pin-form sub-pin-form" onSubmit={pinSong}>
+                      <label>
+                        iPod-Song pinnen
+                        <select name="track" defaultValue="0">
+                          {tracks.map((track, index) => (
+                            <option value={index} key={track.src}>
+                              {track.title} - {track.artist}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Kommentar
+                        <input name="text" placeholder="Warum dieser Song?" />
+                      </label>
+                      <label>
+                        Pin-Farbe
+                        <input name="color" type="color" defaultValue="#eef6ff" />
+                      </label>
+                      <button className="secondary-button">Song pinnen</button>
                     </form>
                   </section>
 
@@ -716,12 +905,30 @@ export default function WallsPage() {
                       {wallPosts.length ? (
                         wallPosts.map((post) => {
                           const author = profiles.find((profile) => profile.id === post.authorId);
+                          const collaborator = profiles.find((profile) => profile.id === post.collaboratorId);
                           return (
-                            <article className="wall-post" key={post.id}>
+                            <article
+                              className={`wall-post post-${post.postType}`}
+                              key={post.id}
+                              style={{ "--pin-color": post.color } as CSSProperties}
+                            >
                               <strong>{post.sticker}</strong>
+                              {post.postType === "image" && post.mediaUrl && (
+                                <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-Pin"} />
+                              )}
+                              {post.postType === "song" && (
+                                <div className="post-song">
+                                  <b>
+                                    {post.songTitle} - {post.songArtist}
+                                  </b>
+                                  <button onClick={() => toggleMusic(post.songSrc)}>Abspielen</button>
+                                </div>
+                              )}
                               <p>{post.text}</p>
                               <span>
-                                Von {author?.name || "Unbekannt"} · {new Date(post.createdAt).toLocaleString("de-DE")}
+                                Von {author?.name || "Unbekannt"}
+                                {collaborator ? ` · Collab mit ${collaborator.name}` : ""} ·{" "}
+                                {new Date(post.createdAt).toLocaleString("de-DE")}
                               </span>
                             </article>
                           );

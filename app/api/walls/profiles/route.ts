@@ -3,6 +3,7 @@ import {
   createWallProfile,
   findWallProfileByHandle,
   getWallProfile,
+  listWallFollows,
   listWallProfiles,
   SupabaseProfile,
   updateWallProfile
@@ -11,9 +12,9 @@ import { getWallSessionProfileId, hashPassword, setWallSession } from "@/lib/wal
 
 export async function GET() {
   try {
-    const profiles = await listWallProfiles();
+    const [profiles, follows] = await Promise.all([listWallProfiles(), listWallFollows()]);
     const activeProfileId = await getWallSessionProfileId();
-    return NextResponse.json({ profiles, activeProfileId });
+    return NextResponse.json({ profiles, follows, activeProfileId });
   } catch (error) {
     return NextResponse.json(
       { profiles: [], message: error instanceof Error ? error.message : "Pinnwände konnten nicht geladen werden." },

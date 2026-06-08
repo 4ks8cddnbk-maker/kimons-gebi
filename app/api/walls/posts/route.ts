@@ -17,8 +17,15 @@ export async function GET() {
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => ({}))) as {
     targetId?: string;
+    collaboratorId?: string;
+    postType?: string;
     text?: string;
     sticker?: string;
+    color?: string;
+    mediaUrl?: string;
+    songTitle?: string;
+    songArtist?: string;
+    songSrc?: string;
   };
   const authorId = await getWallSessionProfileId();
 
@@ -34,8 +41,15 @@ export async function POST(request: Request) {
     const post = await createWallPost({
       authorId,
       targetId: payload.targetId,
+      collaboratorId: payload.collaboratorId || "",
+      postType: payload.postType || "text",
       text: payload.text,
-      sticker: payload.sticker || "Aqua Star"
+      sticker: payload.sticker || "Aqua Star",
+      color: payload.color || "#ffffff",
+      mediaUrl: payload.mediaUrl || "",
+      songTitle: payload.songTitle || "",
+      songArtist: payload.songArtist || "",
+      songSrc: payload.songSrc || ""
     });
     return NextResponse.json({ ok: true, post, message: "An die Wand gepinnt." });
   } catch (error) {

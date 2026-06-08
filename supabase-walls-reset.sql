@@ -1,4 +1,5 @@
 delete from public.wall_posts;
+delete from public.wall_follows;
 
 delete from public.wall_profiles
 where id <> 'kimon';
@@ -16,6 +17,10 @@ insert into public.wall_profiles (
   sticker_pack,
   headline,
   glitter,
+  background_color,
+  accent_color,
+  font_style,
+  layout_density,
   password_hash,
   photos
 )
@@ -30,8 +35,12 @@ values (
   'blue',
   'aqua',
   'party',
-  'Willkommen auf Kimons Pinnwand',
+  'Willkommen auf Kimons .fish',
   true,
+  '#dcecff',
+  '#66b9f1',
+  'lucida',
+  'cozy',
   '',
   '{}'
 )
@@ -47,4 +56,8 @@ on conflict (id) do update set
   sticker_pack = excluded.sticker_pack,
   headline = excluded.headline,
   glitter = excluded.glitter,
+  background_color = excluded.background_color,
+  accent_color = excluded.accent_color,
+  font_style = excluded.font_style,
+  layout_density = excluded.layout_density,
   photos = excluded.photos;

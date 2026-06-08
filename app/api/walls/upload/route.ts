@@ -5,6 +5,7 @@ import { getWallSessionProfileId } from "@/lib/wallSession";
 export async function POST(request: Request) {
   const formData = await request.formData();
   const profileId = await getWallSessionProfileId();
+  const mode = String(formData.get("mode") || "profile");
   const files = formData.getAll("files").filter((file): file is File => file instanceof File && file.size > 0);
 
   if (!files.length) {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     const urls = await Promise.all(files.slice(0, 6).map((file) => uploadWallImage(file)));
     let profile = null;
 
-    if (!profileId) {
+    if (!profileId || mode === "pin") {
       return NextResponse.json({ ok: true, urls, profile, message: "Bild hochgeladen." });
     }
 
