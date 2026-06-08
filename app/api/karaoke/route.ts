@@ -7,6 +7,9 @@ type KaraokePayload = {
   notes?: string;
 };
 
+const fallbackWebhookUrl =
+  "https://script.google.com/macros/s/AKfycbySdIAq6QqUIojq8w7vrjWRrjXux4zQO7icTcr4mW2Ajemom_CnAyCkV-TFQKlTRHooAQ/exec";
+
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => ({}))) as KaraokePayload;
 
@@ -14,18 +17,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Name, Song und Mit wem sind Pflicht." }, { status: 400 });
   }
 
-  const row = {
+  const karaokeEntry = {
     timestamp: new Date().toISOString(),
     name: payload.name,
-    song: payload.song,
-    partners: payload.partners,
-    notes: payload.notes || ""
+    attending: payload.song,
+    guests: payload.partners,
+    food: payload.notes || "",
+    message: ""
   };
 
-  const webhook = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+  const webhook = process.env.GOOGLE_SHEETS_WEBHOOK_URL || fallbackWebhookUrl;
 
   if (!webhook) {
-    console.info("Karaoke signup received without GOOGLE_SHEETS_WEBHOOK_URL:", row);
+    console.info("Karaoke signup received without GOOGLE_SHEETS_WEBHOOK_URL:", karaokeEntry);
     return NextResponse.json({
       ok: true,
       demo: true,
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
   const response = await fetch(webhook, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(row)
+    body: JSON.stringify(karaokeEntry)
   });
 
   if (!response.ok) {
