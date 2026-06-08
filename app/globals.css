@@ -1763,6 +1763,45 @@ footer {
   cursor: pointer;
 }
 
+.fish-dock-toggle {
+  position: fixed;
+  left: 14px;
+  top: 92px;
+  z-index: 31;
+  min-height: 42px;
+  padding: 9px 14px;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
+  border: 1px solid rgba(20, 80, 137, 0.85);
+  border-radius: 999px;
+  box-shadow: 0 12px 24px rgba(23, 40, 68, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+}
+
+.fish-side-dock {
+  position: fixed;
+  left: 14px;
+  top: 144px;
+  z-index: 30;
+  display: grid;
+  gap: 12px;
+  width: min(285px, calc(100vw - 28px));
+  padding: 15px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.88), rgba(229, 237, 248, 0.92)),
+    repeating-linear-gradient(90deg, rgba(102, 185, 241, 0.08) 0 1px, transparent 1px 5px);
+  border: 1px solid #8f9db2;
+  border-radius: 9px;
+  box-shadow: 0 18px 42px rgba(23, 40, 68, 0.26), inset 0 1px 0 #fff;
+  transform: translateX(calc(-100% - 26px));
+  transition: transform 220ms ease;
+}
+
+.fish-side-dock.open {
+  transform: translateX(0);
+}
+
 .wall-create h2,
 .wall-switcher h2 {
   font-size: clamp(30px, 4vw, 44px);
@@ -2076,6 +2115,11 @@ footer {
   border-radius: 8px;
 }
 
+.profile-edit-button {
+  width: 100%;
+  margin-top: 12px;
+}
+
 .profile-main {
   display: grid;
   gap: 16px;
@@ -2126,6 +2170,23 @@ footer {
   margin: 0 0 10px;
   color: #223149;
   font-size: 22px;
+}
+
+.feed-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feed-heading h3 {
+  margin: 0;
+}
+
+.compact-button {
+  min-height: 36px;
+  padding: 7px 13px;
 }
 
 .top-friends {
@@ -2283,6 +2344,86 @@ footer {
   box-shadow: 0 18px 38px rgba(23, 40, 68, 0.24), inset 0 1px 0 #fff;
   transform: translateX(-50%);
   animation: fish-toast-in 240ms ease both;
+}
+
+.fish-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 32, 48, 0.34);
+  backdrop-filter: blur(5px);
+}
+
+.fish-modal {
+  width: min(520px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow: auto;
+  padding: 0;
+  animation: fish-pop 180ms ease both;
+}
+
+.fish-modal-wide {
+  width: min(760px, 100%);
+}
+
+.fish-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.fish-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid #b4bfcd;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 4px rgba(23, 40, 68, 0.12);
+}
+
+.fish-type-tabs button {
+  min-height: 36px;
+  color: #243247;
+  font-weight: 950;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.fish-type-tabs button.active {
+  color: #fff;
+  background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.modal-close {
+  width: 100%;
+}
+
+.profile-edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-edit-grid label:has(textarea),
+.profile-edit-grid .check-label,
+.profile-edit-grid .modal-actions {
+  grid-column: 1 / -1;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-actions button {
+  flex: 1;
 }
 
 @keyframes fish-pop {

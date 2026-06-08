@@ -93,7 +93,7 @@ export const defaultWallProfile: SupabaseProfile = {
   theme: "blue",
   pattern: "aqua",
   stickerPack: "party",
-  headline: "Willkommen auf Kimons Pinnwand",
+  headline: "Willkommen auf Kimons .fish",
   glitter: true,
   backgroundColor: "#dcecff",
   accentColor: "#66b9f1",
@@ -316,14 +316,16 @@ export async function listWallFollows() {
 }
 
 export async function followWallProfile(followerId: string, followingId: string) {
-  const response = await supabaseRest("wall_follows", {
+  const response = await supabaseRest("wall_follows?on_conflict=follower_id,following_id", {
     method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
     body: JSON.stringify({ follower_id: followerId, following_id: followingId })
   });
   const rows = (await response.json()) as FollowRow[];
+  const row = rows[0] || { follower_id: followerId, following_id: followingId };
   return {
-    followerId: rows[0].follower_id,
-    followingId: rows[0].following_id
+    followerId: row.follower_id,
+    followingId: row.following_id
   };
 }
 

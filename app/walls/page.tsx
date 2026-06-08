@@ -113,6 +113,10 @@ export default function WallsPage() {
   const [profileSearch, setProfileSearch] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [newFishOpen, setNewFishOpen] = useState(false);
+  const [fishType, setFishType] = useState<"text" | "image" | "song">("text");
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
@@ -126,7 +130,10 @@ export default function WallsPage() {
     () =>
       viewProfile
         ? posts
-            .filter((post) => post.targetId === viewProfile.id || post.collaboratorId === viewProfile.id)
+            .filter(
+              (post) =>
+                post.targetId === viewProfile.id || post.authorId === viewProfile.id || post.collaboratorId === viewProfile.id
+            )
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         : [],
     [posts, viewProfile]
@@ -265,8 +272,15 @@ export default function WallsPage() {
     await fetch("/api/walls/login", { method: "DELETE" });
     setActiveProfileId("");
     setViewProfileId("");
+    setSideMenuOpen(false);
     notify("Ausgeloggt.");
     await loadWalls();
+  }
+
+  async function adminLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    setIsAdmin(false);
+    notify("Admin-Modus ist aus.");
   }
 
   async function adminLogin(event: FormEvent<HTMLFormElement>) {
@@ -408,11 +422,12 @@ export default function WallsPage() {
     }
 
     notify(".fish Style gespeichert.");
+    setEditProfileOpen(false);
     await loadWalls(false);
   }
 
   async function createPost(payload: Partial<WallPost>) {
-    if (!viewProfile) return;
+    if (!viewProfile) return false;
 
     const response = await fetch("/api/walls/posts", {
       method: "POST",
@@ -426,10 +441,11 @@ export default function WallsPage() {
 
     if (!response.ok) {
       notify(data.message || ".fish konnte nicht gespeichert werden.");
-      return;
+      return false;
     }
 
     await loadWalls(false);
+    return true;
   }
 
   async function pinText(event: FormEvent<HTMLFormElement>) {
@@ -441,14 +457,17 @@ export default function WallsPage() {
     if (!text) return;
 
     notify(".fish wird gespeichert...");
-    await createPost({
+    const saved = await createPost({
       postType: "text",
       text,
       sticker: String(formData.get("sticker") || stickerOptions[0]),
       color: String(formData.get("color") || "#ffffff")
     } as WallPost);
-    notify("Neues .fish gespeichert.");
-    form.reset();
+    if (saved) {
+      notify("Text-.fish ist im Feed.");
+      form.reset();
+      setNewFishOpen(false);
+    }
   }
 
   async function pinImage(event: FormEvent<HTMLFormElement>) {
@@ -469,16 +488,19 @@ export default function WallsPage() {
 
     try {
       const upload = await uploadFiles([file], "pin");
-      await createPost({
+      const saved = await createPost({
         postType: "image",
-        text: text || "Bild-Pin",
-        sticker: "Collab Pin",
+        text: text || "Bild-.fish",
+        sticker: String(formData.get("sticker") || "Collab .fish"),
         color: String(formData.get("color") || "#ffffff"),
         mediaUrl: upload.urls[0],
         collaboratorId: viewProfile.id !== activeProfile.id ? viewProfile.id : ""
       } as WallPost);
-      notify("Bild als Collab-.fish gespeichert.");
-      form.reset();
+      if (saved) {
+        notify("Bild-.fish ist im Feed.");
+        form.reset();
+        setNewFishOpen(false);
+      }
     } catch (error) {
       notify(error instanceof Error ? error.message : "Bild-.fish konnte nicht gespeichert werden.");
     }
@@ -491,7 +513,7 @@ export default function WallsPage() {
     const track = tracks[Number(formData.get("track")) || 0];
 
     notify("Song wird als .fish gepinnt...");
-    await createPost({
+    const saved = await createPost({
       postType: "song",
       text: String(formData.get("text") || "Song aus der Party-Playlist"),
       sticker: "iPod Approved",
@@ -500,8 +522,11 @@ export default function WallsPage() {
       songArtist: track.artist,
       songSrc: track.src
     } as WallPost);
-    notify("Song als neues .fish gespeichert.");
-    form.reset();
+    if (saved) {
+      notify("Song-.fish ist im Feed.");
+      form.reset();
+      setNewFishOpen(false);
+    }
   }
 
   async function toggleFollow() {
@@ -519,7 +544,19 @@ export default function WallsPage() {
       return;
     }
 
-    notify(isFollowingViewProfile ? "Nicht mehr gefolgt." : "Gefolgt.");
+    const nextFollow = { followerId: activeProfile.id, followingId: viewProfile.id };
+    setFollows((currentFollows) =>
+      isFollowingViewProfile
+        ? currentFollows.filter(
+            (follow) => !(follow.followerId === nextFollow.followerId && follow.followingId === nextFollow.followingId)
+          )
+        : currentFollows.some(
+              (follow) => follow.followerId === nextFollow.followerId && follow.followingId === nextFollow.followingId
+            )
+          ? currentFollows
+          : [...currentFollows, nextFollow]
+    );
+    notify(isFollowingViewProfile ? "Nicht mehr gefolgt." : `${viewProfile.name} wird gefolgt.`);
     await loadWalls(false);
   }
 
@@ -703,45 +740,46 @@ export default function WallsPage() {
             </div>
           </aside>
 
-          <section className="section wall-account-bar">
-            <div className="snow-window wall-switcher">
-              <p className="eyebrow">Eingeloggt als</p>
-              <div className="wall-profile-list">
-                <button className="active" type="button">
-                  <span className="mini-avatar">
-                    {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
-                  </span>
-                  <span>{activeProfile.name}</span>
-                </button>
-              </div>
-              <label className="photo-drop">
-                Bilder auf meine Pinnwand laden
-                <input type="file" accept="image/*" multiple onChange={uploadPhotos} />
-              </label>
-              {isAdmin ? (
-                <div className="fish-admin-box admin-on">
-                  <strong>Admin aktiv</strong>
-                  <span>Du bearbeitest das geöffnete .fish.</span>
-                </div>
-              ) : (
-                <form className="fish-admin-box" onSubmit={adminLogin}>
-                  <label>
-                    Admin
-                    <input
-                      value={adminPassword}
-                      onChange={(event) => setAdminPassword(event.target.value)}
-                      type="password"
-                      placeholder="Admin-Passwort"
-                    />
-                  </label>
-                  <button className="secondary-button">Admin</button>
-                </form>
-              )}
-              <button className="secondary-button" type="button" onClick={logout}>
-                Ausloggen
+          <button className="fish-dock-toggle" type="button" onClick={() => setSideMenuOpen((value) => !value)}>
+            {sideMenuOpen ? "Menu schliessen" : ".fish Menu"}
+          </button>
+
+          <aside className={`fish-side-dock ${sideMenuOpen ? "open" : ""}`}>
+            <p className="eyebrow">.fish Menu</p>
+            <div className="wall-profile-list">
+              <button className="active" type="button">
+                <span className="mini-avatar">
+                  {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
+                </span>
+                <span>{activeProfile.name}</span>
               </button>
             </div>
-          </section>
+            {isAdmin ? (
+              <div className="fish-admin-box admin-on">
+                <strong>Admin aktiv</strong>
+                <span>Du bearbeitest das geöffnete .fish.</span>
+                <button className="secondary-button" type="button" onClick={adminLogout}>
+                  Admin aus
+                </button>
+              </div>
+            ) : (
+              <form className="fish-admin-box" onSubmit={adminLogin}>
+                <label>
+                  Admin
+                  <input
+                    value={adminPassword}
+                    onChange={(event) => setAdminPassword(event.target.value)}
+                    type="password"
+                    placeholder="louki22"
+                  />
+                </label>
+                <button className="secondary-button">Admin Login</button>
+              </form>
+            )}
+            <button className="secondary-button" type="button" onClick={logout}>
+              Ausloggen
+            </button>
+          </aside>
 
           <section
             id="wall"
@@ -787,6 +825,11 @@ export default function WallsPage() {
                   <p>@{viewProfile.handle}</p>
                   <div className="status-pill">Status: {viewProfile.mood}</div>
                   <div className="profile-song">Profil-Song: {viewProfile.song}</div>
+                  {editableProfile && (
+                    <button className="secondary-button profile-edit-button" onClick={() => setEditProfileOpen(true)}>
+                      Profil bearbeiten
+                    </button>
+                  )}
                   {activeProfile.id !== viewProfile.id && (
                     <button className="aqua-button follow-button" onClick={toggleFollow}>
                       {isFollowingViewProfile ? "Gefolgt" : "Folgen"}
@@ -799,83 +842,6 @@ export default function WallsPage() {
                     <h3>Über mich</h3>
                     <p>{viewProfile.bio}</p>
                   </section>
-
-                  {editableProfile && (
-                    <section className="wall-box">
-                      <h3>{isAdmin && editableProfile.id !== activeProfile.id ? "Admin: .fish bearbeiten" : "Meine .fish stylen"}</h3>
-                      <form className="pin-form" onSubmit={saveStyle}>
-                        <label>
-                          Überschrift
-                          <input name="headline" defaultValue={editableProfile.headline} />
-                        </label>
-                        <label>
-                          Status
-                          <input name="mood" defaultValue={editableProfile.mood} />
-                        </label>
-                        <label>
-                          Profil-Song
-                          <input name="song" defaultValue={editableProfile.song} />
-                        </label>
-                        <label>
-                          Bio
-                          <textarea name="bio" defaultValue={editableProfile.bio} />
-                        </label>
-                        <label>
-                          Theme
-                          <select name="theme" defaultValue={editableProfile.theme}>
-                            {themeOptions.map((theme) => (
-                              <option value={theme.value} key={theme.value}>
-                                {theme.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Hintergrund
-                          <input name="backgroundColor" type="color" defaultValue={editableProfile.backgroundColor} />
-                        </label>
-                        <label>
-                          Akzent
-                          <input name="accentColor" type="color" defaultValue={editableProfile.accentColor} />
-                        </label>
-                        <label>
-                          Muster
-                          <select name="pattern" defaultValue={editableProfile.pattern}>
-                            {patternOptions.map((pattern) => (
-                              <option value={pattern.value} key={pattern.value}>
-                                {pattern.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Schrift
-                          <select name="fontStyle" defaultValue={editableProfile.fontStyle}>
-                            {fontOptions.map((font) => (
-                              <option value={font.value} key={font.value}>
-                                {font.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Layout
-                          <select name="layoutDensity" defaultValue={editableProfile.layoutDensity}>
-                            {densityOptions.map((density) => (
-                              <option value={density.value} key={density.value}>
-                                {density.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="check-label">
-                          <input name="glitter" type="checkbox" defaultChecked={editableProfile.glitter} />
-                          Glitzer-Modus
-                        </label>
-                        <button className="aqua-button">Style speichern</button>
-                      </form>
-                    </section>
-                  )}
 
                   <section className="wall-box">
                     <h3>Top Freunde</h3>
@@ -896,81 +862,12 @@ export default function WallsPage() {
                   </section>
 
                   <section className="wall-box">
-                    <h3>Bilder</h3>
-                    {viewProfile.photos.length ? (
-                      <div className="wall-photos">
-                        {viewProfile.photos.map((photo, index) => (
-                          <img src={photo} alt={`${viewProfile.name} Foto ${index + 1}`} key={`${photo}-${index}`} />
-                        ))}
-                      </div>
-                    ) : (
-                      <p>Noch keine Bilder hochgeladen.</p>
-                    )}
-                  </section>
-
-                  <section className="wall-box">
-                    <h3>Neues .fish erstellen</h3>
-                    <form className="pin-form" onSubmit={pinText}>
-                      <label>
-                        Nachricht
-                        <textarea name="text" placeholder={`Schreib etwas auf ${viewProfile.name}s Wand`} required />
-                      </label>
-                      <label>
-                        Sticker
-                        <select name="sticker" defaultValue={stickerOptions[0]}>
-                          {stickerOptions.map((sticker) => (
-                            <option key={sticker}>{sticker}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Pin-Farbe
-                        <input name="color" type="color" defaultValue="#ffffff" />
-                      </label>
-                      <button className="aqua-button">Text-.fish erstellen</button>
-                    </form>
-
-                    <form className="pin-form sub-pin-form" onSubmit={pinImage}>
-                      <label>
-                        Bild als Collab-Pin
-                        <input name="image" type="file" accept="image/*" />
-                      </label>
-                      <label>
-                        Caption
-                        <input name="text" placeholder="Kurzer Text zum Bild" />
-                      </label>
-                      <label>
-                        Pin-Farbe
-                        <input name="color" type="color" defaultValue="#fff8dc" />
-                      </label>
-                      <button className="secondary-button">Bild pinnen</button>
-                    </form>
-
-                    <form className="pin-form sub-pin-form" onSubmit={pinSong}>
-                      <label>
-                        iPod-Song als .fish
-                        <select name="track" defaultValue="0">
-                          {tracks.map((track, index) => (
-                            <option value={index} key={track.src}>
-                              {track.title} - {track.artist}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Kommentar
-                        <input name="text" placeholder="Warum dieser Song?" />
-                      </label>
-                      <label>
-                        Pin-Farbe
-                        <input name="color" type="color" defaultValue="#eef6ff" />
-                      </label>
-                      <button className="secondary-button">Song-.fish erstellen</button>
-                    </form>
-                  </section>
-
-                  <section className="wall-box">
-                    <h3>Wand</h3>
+                    <div className="feed-heading">
+                      <h3>Feed</h3>
+                      <button className="aqua-button compact-button" onClick={() => setNewFishOpen(true)}>
+                        Neues .fish
+                      </button>
+                    </div>
                     <div className="wall-posts">
                       {wallPosts.length ? (
                         wallPosts.map((post) => {
@@ -1012,6 +909,202 @@ export default function WallsPage() {
               </div>
             </article>
           </section>
+
+          {newFishOpen && (
+            <div className="fish-modal-backdrop" role="dialog" aria-modal="true">
+              <div className="fish-modal snow-window">
+                <div className="myspace-topbar">
+                  <span />
+                  <span />
+                  <span />
+                  <strong>Neues .fish</strong>
+                </div>
+                <div className="fish-modal-body">
+                  <div className="fish-type-tabs">
+                    <button className={fishType === "text" ? "active" : ""} onClick={() => setFishType("text")}>
+                      Text
+                    </button>
+                    <button className={fishType === "image" ? "active" : ""} onClick={() => setFishType("image")}>
+                      Bild
+                    </button>
+                    <button className={fishType === "song" ? "active" : ""} onClick={() => setFishType("song")}>
+                      Song
+                    </button>
+                  </div>
+
+                  {fishType === "text" && (
+                    <form className="pin-form" onSubmit={pinText}>
+                      <label>
+                        Text-.fish
+                        <textarea name="text" placeholder={`Schreib etwas in ${viewProfile.name}s Feed`} required />
+                      </label>
+                      <label>
+                        Stil
+                        <select name="sticker" defaultValue={stickerOptions[0]}>
+                          {stickerOptions.map((sticker) => (
+                            <option key={sticker}>{sticker}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Farbe
+                        <input name="color" type="color" defaultValue="#ffffff" />
+                      </label>
+                      <button className="aqua-button">Text-.fish posten</button>
+                    </form>
+                  )}
+
+                  {fishType === "image" && (
+                    <form className="pin-form" onSubmit={pinImage}>
+                      <label>
+                        Bild-.fish
+                        <input name="image" type="file" accept="image/*" required />
+                      </label>
+                      <label>
+                        Caption
+                        <input name="text" placeholder="Kurzer Text zum Bild" />
+                      </label>
+                      <label>
+                        Stil
+                        <select name="sticker" defaultValue="Collab .fish">
+                          <option>Collab .fish</option>
+                          {stickerOptions.map((sticker) => (
+                            <option key={sticker}>{sticker}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Farbe
+                        <input name="color" type="color" defaultValue="#fff8dc" />
+                      </label>
+                      <button className="aqua-button">Bild-.fish posten</button>
+                    </form>
+                  )}
+
+                  {fishType === "song" && (
+                    <form className="pin-form" onSubmit={pinSong}>
+                      <label>
+                        Song-.fish
+                        <select name="track" defaultValue="0">
+                          {tracks.map((track, index) => (
+                            <option value={index} key={track.src}>
+                              {track.title} - {track.artist}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Kommentar
+                        <input name="text" placeholder="Warum dieser Song?" />
+                      </label>
+                      <label>
+                        Farbe
+                        <input name="color" type="color" defaultValue="#eef6ff" />
+                      </label>
+                      <button className="aqua-button">Song-.fish posten</button>
+                    </form>
+                  )}
+
+                  <button className="secondary-button modal-close" type="button" onClick={() => setNewFishOpen(false)}>
+                    Schliessen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {editProfileOpen && editableProfile && (
+            <div className="fish-modal-backdrop" role="dialog" aria-modal="true">
+              <div className="fish-modal fish-modal-wide snow-window">
+                <div className="myspace-topbar">
+                  <span />
+                  <span />
+                  <span />
+                  <strong>
+                    {isAdmin && editableProfile.id !== activeProfile.id ? "Admin: .fish bearbeiten" : "Profil bearbeiten"}
+                  </strong>
+                </div>
+                <div className="fish-modal-body">
+                  <form className="pin-form profile-edit-grid" onSubmit={saveStyle}>
+                    <label>
+                      Überschrift
+                      <input name="headline" defaultValue={editableProfile.headline} />
+                    </label>
+                    <label>
+                      Status
+                      <input name="mood" defaultValue={editableProfile.mood} />
+                    </label>
+                    <label>
+                      Profil-Song
+                      <input name="song" defaultValue={editableProfile.song} />
+                    </label>
+                    <label>
+                      Bio
+                      <textarea name="bio" defaultValue={editableProfile.bio} />
+                    </label>
+                    <label>
+                      Theme
+                      <select name="theme" defaultValue={editableProfile.theme}>
+                        {themeOptions.map((theme) => (
+                          <option value={theme.value} key={theme.value}>
+                            {theme.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Hintergrund
+                      <input name="backgroundColor" type="color" defaultValue={editableProfile.backgroundColor} />
+                    </label>
+                    <label>
+                      Akzent
+                      <input name="accentColor" type="color" defaultValue={editableProfile.accentColor} />
+                    </label>
+                    <label>
+                      Muster
+                      <select name="pattern" defaultValue={editableProfile.pattern}>
+                        {patternOptions.map((pattern) => (
+                          <option value={pattern.value} key={pattern.value}>
+                            {pattern.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Schrift
+                      <select name="fontStyle" defaultValue={editableProfile.fontStyle}>
+                        {fontOptions.map((font) => (
+                          <option value={font.value} key={font.value}>
+                            {font.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Layout
+                      <select name="layoutDensity" defaultValue={editableProfile.layoutDensity}>
+                        {densityOptions.map((density) => (
+                          <option value={density.value} key={density.value}>
+                            {density.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="check-label">
+                      <input name="glitter" type="checkbox" defaultChecked={editableProfile.glitter} />
+                      Glitzer-Modus
+                    </label>
+                    <div className="modal-actions">
+                      <button className="aqua-button">Speichern</button>
+                      <button className="secondary-button" type="button" onClick={() => setEditProfileOpen(false)}>
+                        Schliessen
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
       {toast && <div className="fish-toast">{toast}</div>}

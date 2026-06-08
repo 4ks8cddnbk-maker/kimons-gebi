@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/admin/login/route": "/api/admin/login",
+  "/api/admin/logout/route": "/api/admin/logout",
+  "/api/karaoke/route": "/api/karaoke",
+  "/api/photos/route": "/api/photos",
+  "/api/site-login/route": "/api/site-login",
+  "/api/walls/profiles/route": "/api/walls/profiles",
+  "/api/walls/follows/route": "/api/walls/follows",
+  "/api/walls/login/route": "/api/walls/login",
+  "/api/walls/posts/route": "/api/walls/posts",
+  "/api/walls/upload/route": "/api/walls/upload",
+  "/admin/page": "/admin",
+  "/walls/page": "/walls",
+  "/enter/page": "/enter",
+  "/page": "/"
+}
