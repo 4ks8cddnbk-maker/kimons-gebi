@@ -130,7 +130,7 @@ export default function Home() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [routeDestination, setRouteDestination] = useState("");
   const [routeTime, setRouteTime] = useState("01:00");
-  const [rsvpState, setRsvpState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [karaokeState, setKaraokeState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
@@ -344,22 +344,22 @@ export default function Home() {
     dragRef.current = null;
   }
 
-  async function submitRsvp(event: FormEvent<HTMLFormElement>) {
+  async function submitKaraoke(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setRsvpState("sending");
+    setKaraokeState("sending");
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
-    const response = await fetch("/api/rsvp", {
+    const response = await fetch("/api/karaoke", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
     const data = await response.json();
 
-    setRsvpState(response.ok ? "done" : "error");
-    setMessage(data.message || (response.ok ? "Danke, deine RSVP ist angekommen." : "Das hat leider nicht geklappt."));
+    setKaraokeState(response.ok ? "done" : "error");
+    setMessage(data.message || (response.ok ? "Danke, dein Karaoke-Song ist eingetragen." : "Das hat leider nicht geklappt."));
 
     if (response.ok) event.currentTarget.reset();
   }
@@ -381,7 +381,7 @@ export default function Home() {
         <div>
           <a href="#home">Start</a>
           <a href="#ipod">iPod</a>
-          <a href="#rsvp">RSVP</a>
+          <a href="#karaoke">Karaoke</a>
           <a href="#dresscode">Dresscode</a>
           <a href="#galerie">Fotos</a>
           <a href="/admin">Admin</a>
@@ -402,8 +402,8 @@ export default function Home() {
             übertrieben formell. Smart casual bis festlich ist genau richtig.
           </p>
           <div className="hero-actions">
-            <a href="#rsvp" className="aqua-button">
-              Zusagen
+            <a href="#karaoke" className="aqua-button">
+              Karaoke eintragen
             </a>
           </div>
         </div>
@@ -559,47 +559,36 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="rsvp" className="section split">
+      <section id="karaoke" className="section split">
         <div>
-          <p className="eyebrow">RSVP</p>
-          <h2>Sag kurz Bescheid</h2>
+          <p className="eyebrow">Karaoke</p>
+          <h2>Dein Song für den Abend</h2>
           <p>
-            Trag dich kurz ein, damit Kimon besser planen kann: wer kommt, ob du jemanden mitbringst und ob es
-            beim Essen etwas zu beachten gibt.
+            Jede Person kann einen Song machen. Trag bitte ein, welchen Song du singen willst und mit wem du ihn
+            machst, damit am Abend alles entspannt geplant werden kann.
           </p>
         </div>
-        <form className="snow-window form" onSubmit={submitRsvp}>
+        <form className="snow-window form" onSubmit={submitKaraoke}>
           <label>
             Name
             <input name="name" required placeholder="Dein Name" />
           </label>
           <label>
-            Bist du dabei?
-            <select name="attending" required defaultValue="">
-              <option value="" disabled>
-                Bitte wählen
-              </option>
-              <option>Ja, ich komme</option>
-              <option>Vielleicht</option>
-              <option>Leider nein</option>
-            </select>
+            Song
+            <input name="song" required placeholder="Titel und Interpret" />
           </label>
           <label>
-            Begleitung
-            <input name="guests" type="number" min="0" max="5" placeholder="0" />
+            Mit wem machst du den Song?
+            <input name="partners" required placeholder="Alle Namen eintragen" />
           </label>
           <label>
-            Essen / Hinweise
-            <input name="food" placeholder="Vegetarisch, Allergien, Lieblingsdip..." />
+            Hinweis
+            <textarea name="notes" placeholder="Optional: Version, YouTube-Link, besondere Wünsche..." />
           </label>
-          <label>
-            Nachricht
-            <textarea name="message" placeholder="Sag Kimon was Nettes" />
-          </label>
-          <button className="aqua-button" disabled={rsvpState === "sending"}>
-            {rsvpState === "sending" ? "Sende..." : "RSVP absenden"}
+          <button className="aqua-button" disabled={karaokeState === "sending"}>
+            {karaokeState === "sending" ? "Sende..." : "Karaoke anmelden"}
           </button>
-          {message && <p className={`form-message ${rsvpState}`}>{message}</p>}
+          {message && <p className={`form-message ${karaokeState}`}>{message}</p>}
         </form>
       </section>
 
