@@ -130,6 +130,9 @@ export default function WallsPage() {
   const [showFishPage, setShowFishPage] = useState(true);
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [followPulse, setFollowPulse] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [seenNotifications, setSeenNotifications] = useState(0);
+  const [highlightedPostId, setHighlightedPostId] = useState("");
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
@@ -175,7 +178,8 @@ export default function WallsPage() {
         return {
           id: `follow-${follow.followerId}`,
           text: `${follower?.name || "Jemand"} folgt dir jetzt.`,
-          profileId: follow.followerId
+          profileId: follow.followerId,
+          postId: ""
         };
       });
     const collabNotes = posts
@@ -185,7 +189,8 @@ export default function WallsPage() {
         return {
           id: `collab-${post.id}`,
           text: `${author?.name || "Jemand"} hat dich in einem .fish markiert.`,
-          profileId: post.authorId
+          profileId: post.targetId || post.authorId,
+          postId: post.id
         };
       });
     const commentNotes = comments
@@ -199,7 +204,8 @@ export default function WallsPage() {
         return {
           id: `comment-${comment.id}`,
           text: `${author?.name || "Jemand"} hat dein .fish kommentiert.`,
-          profileId: comment.authorId
+          profileId: comment.authorId,
+          postId: comment.postId
         };
       });
 
@@ -688,6 +694,21 @@ export default function WallsPage() {
     setShowFishPage(false);
   }
 
+  function openNotification(note: { profileId: string; postId: string }) {
+    openProfile(note.profileId);
+    if (note.postId) {
+      setHighlightedPostId(note.postId);
+      window.setTimeout(() => {
+        document.getElementById(`fish-post-${note.postId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
+    }
+  }
+
+  function toggleNotifications() {
+    setNotificationsOpen((value) => !value);
+    setSeenNotifications(notifications.length);
+  }
+
   function toggleMusic(src?: string) {
     const audio = audioRef.current;
     if (!audio) return;
@@ -736,7 +757,8 @@ export default function WallsPage() {
 
     return (
       <article
-        className={`wall-post post-${post.postType}`}
+        id={`fish-post-${post.id}`}
+        className={`wall-post post-${post.postType} ${highlightedPostId === post.id ? "highlighted" : ""}`}
         key={post.id}
         style={{ "--pin-color": post.color } as CSSProperties}
       >
@@ -967,6 +989,28 @@ export default function WallsPage() {
             {sideMenuOpen ? "Menu schliessen" : ".fish Menu"}
           </button>
 
+          <button className="fish-bell" type="button" onClick={toggleNotifications} aria-label="Benachrichtigungen">
+            bell
+            {Math.max(0, notifications.length - seenNotifications) > 0 && (
+              <span>{Math.max(0, notifications.length - seenNotifications)}</span>
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <aside className="fish-notification-popover">
+              <strong>Benachrichtigungen</strong>
+              {notifications.length ? (
+                notifications.map((note) => (
+                  <button type="button" key={note.id} onClick={() => openNotification(note)}>
+                    {note.text}
+                  </button>
+                ))
+              ) : (
+                <span>Noch nichts Neues.</span>
+              )}
+            </aside>
+          )}
+
           <aside className={`fish-side-dock ${sideMenuOpen ? "open" : ""}`}>
             <p className="eyebrow">.fish Menu</p>
             <div className="wall-profile-list">
@@ -1006,7 +1050,7 @@ export default function WallsPage() {
               <strong>Benachrichtigungen</strong>
               {notifications.length ? (
                 notifications.map((note) => (
-                  <button type="button" key={note.id} onClick={() => openProfile(note.profileId)}>
+                  <button type="button" key={note.id} onClick={() => openNotification(note)}>
                     {note.text}
                   </button>
                 ))
@@ -1060,6 +1104,19 @@ export default function WallsPage() {
                     <h2>.fishpage</h2>
                     <p>Hier siehst du die neuesten .fishs von allen anderen in zeitlicher Reihenfolge.</p>
                   </div>
+                  <article className="wall-post party-news-post">
+                    <div className="post-route">
+                      <button type="button">Kimon {renderVerified(profiles.find((profile) => profile.id === "kimon"))}</button>
+                      <span>posted</span>
+                    </div>
+                    <strong>Party Website</strong>
+                    <p>
+                      Kimon's 23. Geburtstag: 27.06.2026, 19:00, Wendelinstraße 94. Dresscode schick, aber entspannt.
+                    </p>
+                    <a className="secondary-button party-news-link" href="/party">
+                      Party-Website öffnen
+                    </a>
+                  </article>
                   <div className="wall-posts">
                     {fishPagePosts.length ? fishPagePosts.map((post) => renderPost(post)) : <p>Noch keine fremden .fishs da.</p>}
                   </div>
