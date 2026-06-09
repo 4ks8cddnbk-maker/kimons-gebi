@@ -56,7 +56,10 @@ type Follow = {
 const tracks = [
   { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
   { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
-  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
+  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
+  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
+  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
+  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" }
 ];
 
 const reactionPrefix = "__reaction__:";
@@ -1011,7 +1014,9 @@ export default function WallsPage() {
     return (
       <article
         id={`fish-post-${post.id}`}
-        className={`wall-post post-${post.postType} ${highlightedPostId === post.id ? "highlighted" : ""}`}
+        className={`wall-post post-${post.postType} ${post.postType === "image" ? "image-wall-post" : ""} ${
+          highlightedPostId === post.id ? "highlighted" : ""
+        }`}
         key={post.id}
         style={{ "--pin-color": post.color } as CSSProperties}
       >
@@ -1120,7 +1125,7 @@ export default function WallsPage() {
       <nav className="topbar fish-topbar" aria-label=".fish Navigation">
         <div>
           <button className="fish-orb-brand" type="button" onClick={openFishPage}>
-            .fish V2
+            .fish
           </button>
           {activeProfile && (
             <button className="fish-home-profile" type="button" onClick={() => openProfile(activeProfile.id)}>

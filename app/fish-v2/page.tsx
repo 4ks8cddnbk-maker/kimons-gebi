@@ -6,7 +6,10 @@ import type { CSSProperties } from "react";
 const tracks = [
   { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
   { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
-  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
+  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
+  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
+  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
+  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" }
 ];
 
 export default function FishV2Gate() {
@@ -18,6 +21,7 @@ export default function FishV2Gate() {
   const [trackProgress, setTrackProgress] = useState(0);
   const [beatPulse, setBeatPulse] = useState(0);
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
+  const [radioStarted, setRadioStarted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingRadioStartRef = useRef(false);
 
@@ -74,6 +78,7 @@ export default function FishV2Gate() {
         .play()
         .then(() => {
           setIsPlaying(true);
+          setRadioStarted(true);
           setBeatPulse(0.82);
         })
         .catch(() => setIsPlaying(false));
@@ -140,6 +145,7 @@ export default function FishV2Gate() {
         onEnded={nextTrack}
         onPlay={() => {
           setIsPlaying(true);
+          setRadioStarted(true);
           setBeatPulse(0.82);
         }}
         onPause={() => {
@@ -193,25 +199,38 @@ export default function FishV2Gate() {
         >
           <div className="ipod-screen">
             <div className="ipod-tabs">
-              <button className="active">Music</button>
+              <button className="active">{radioStarted ? "Radio" : "Start Radio"}</button>
             </div>
-            <small>iPod von Kimon</small>
+            <small>{radioStarted ? "103.7 .fish FM" : "103.7 .fish FM bereit"}</small>
             <div>
-              <ol className="ipod-list">
-                {tracks.map((track, index) => (
-                  <li className={index === activeTrack ? "active" : ""} key={track.src}>
-                    <button onClick={() => setActiveTrack(index)}>
-                      <span>{track.title}</span>
-                      <small>{track.artist}</small>
-                    </button>
-                  </li>
-                ))}
-              </ol>
+              {!radioStarted ? (
+                <div className="radio-start-screen">
+                  <strong>START RADIO</strong>
+                  <span>shuffle broadcast</span>
+                  <small>press play</small>
+                </div>
+              ) : (
+                <ol className="ipod-list">
+                  {tracks.map((track, index) => (
+                    <li className={index === activeTrack ? "active" : ""} key={track.src}>
+                      <button
+                        onClick={() => {
+                          setRadioStarted(true);
+                          setActiveTrack(index);
+                        }}
+                      >
+                        <span>{track.title}</span>
+                        <small>{track.artist}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
               <div className="progress">
                 <i style={{ width: `${trackProgress}%` }} />
               </div>
               <p className="ipod-status">
-                {isPlaying ? "Spielt" : "Pause"} · {tracks[activeTrack].title}
+                {radioStarted ? `${isPlaying ? "On Air" : "Pause"} · ${tracks[activeTrack].title}` : "Radio wartet"}
               </p>
             </div>
           </div>
