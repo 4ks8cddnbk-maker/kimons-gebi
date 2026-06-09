@@ -213,7 +213,10 @@ export default function WallsPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [radioStarted, setRadioStarted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const pendingRadioStartRef = useRef(false);
+  const pendingDirectStartRef = useRef(false);
 
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
   const viewProfile =
@@ -403,12 +406,13 @@ export default function WallsPage() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    audio.load();
-
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
+    if (pendingRadioStartRef.current || pendingDirectStartRef.current || isPlaying) {
+      const shouldJumpIntoSong = pendingRadioStartRef.current;
+      pendingRadioStartRef.current = false;
+      pendingDirectStartRef.current = false;
+      playSelectedTrack(shouldJumpIntoSong);
     }
-  }, [activeTrack, isPlaying]);
+  }, [activeTrack]);
 
   async function loadWalls(showSpinner = true) {
     if (showSpinner) setLoading(true);
@@ -959,17 +963,66 @@ export default function WallsPage() {
     setSeenNotifications(notifications.length);
   }
 
+  function playSelectedTrack(jumpIntoSong = false) {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const startAudio = () => {
+      if (jumpIntoSong && Number.isFinite(audio.duration) && audio.duration > 24) {
+        audio.currentTime = Math.floor(Math.random() * Math.max(1, audio.duration - 18));
+      }
+
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setRadioStarted(true);
+        })
+        .catch(() => setIsPlaying(false));
+    };
+
+    if (audio.readyState >= 1) {
+      startAudio();
+      return;
+    }
+
+    audio.addEventListener("loadedmetadata", startAudio, { once: true });
+    audio.load();
+  }
+
+  function startRadio() {
+    const randomTrack = Math.floor(Math.random() * tracks.length);
+    pendingRadioStartRef.current = true;
+
+    if (randomTrack === activeTrack) {
+      pendingRadioStartRef.current = false;
+      playSelectedTrack(true);
+      return;
+    }
+
+    setActiveTrack(randomTrack);
+  }
+
   function toggleMusic(src?: string) {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (src) {
       const trackIndex = tracks.findIndex((track) => track.src === src);
-      if (trackIndex >= 0) setActiveTrack(trackIndex);
+      if (trackIndex >= 0) {
+        if (trackIndex === activeTrack) {
+          playSelectedTrack(false);
+          return;
+        }
+
+        pendingDirectStartRef.current = true;
+        setActiveTrack(trackIndex);
+        return;
+      }
     }
 
     if (audio.paused) {
-      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      startRadio();
       return;
     }
 
@@ -1135,7 +1188,10 @@ export default function WallsPage() {
         ref={audioRef}
         src={tracks[activeTrack].src}
         onEnded={nextTrack}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaying(true);
+          setRadioStarted(true);
+        }}
         onPause={() => setIsPlaying(false)}
       />
       <nav className="topbar fish-topbar" aria-label=".fish Navigation">
@@ -1301,7 +1357,7 @@ export default function WallsPage() {
               <>
                 <strong>.fish Player</strong>
                 <span>
-                  {tracks[activeTrack].title} - {tracks[activeTrack].artist}
+                  {radioStarted ? `103.7 .fish FM · ${tracks[activeTrack].title}` : "103.7 .fish FM · Radio bereit"}
                 </span>
                 <div className="ipod-controls-mini">
                   <button className="mini-play" onClick={() => toggleMusic()}>

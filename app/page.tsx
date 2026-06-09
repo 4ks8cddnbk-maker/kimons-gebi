@@ -133,6 +133,7 @@ export default function Home() {
   const [trackProgress, setTrackProgress] = useState(0);
   const [beatPulse, setBeatPulse] = useState(0);
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
+  const [radioStarted, setRadioStarted] = useState(false);
   const [ipodMode, setIpodMode] = useState<"music" | "snake">("music");
   const [snake, setSnake] = useState(initialSnake);
   const [snakeFood, setSnakeFood] = useState(initialFood);
@@ -148,6 +149,7 @@ export default function Home() {
   const [karaokeState, setKaraokeState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const pendingRadioStartRef = useRef(false);
   const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   useEffect(() => {
@@ -172,8 +174,10 @@ export default function Home() {
     audio.load();
     setTrackProgress(0);
 
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
+    if (pendingRadioStartRef.current || isPlaying) {
+      const shouldJumpIntoSong = pendingRadioStartRef.current;
+      pendingRadioStartRef.current = false;
+      playSelectedTrack(shouldJumpIntoSong);
     }
   }, [activeTrack]);
 
@@ -213,12 +217,51 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, [ipodMode, snakeDirection, snakeFood, snakeRunning, snakeGameOver]);
 
-  function previousTrack() {
-    setActiveTrack((activeTrack + tracks.length - 1) % tracks.length);
+  function nextTrack() {
+    const nextIndex =
+      tracks.length > 1 ? (activeTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0;
+    setActiveTrack(nextIndex);
   }
 
-  function nextTrack() {
-    setActiveTrack((activeTrack + 1) % tracks.length);
+  function playSelectedTrack(jumpIntoSong = false) {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const startAudio = () => {
+      if (jumpIntoSong && Number.isFinite(audio.duration) && audio.duration > 24) {
+        audio.currentTime = Math.floor(Math.random() * Math.max(1, audio.duration - 18));
+      }
+
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setRadioStarted(true);
+          setBeatPulse(0.86);
+        })
+        .catch(() => setIsPlaying(false));
+    };
+
+    if (audio.readyState >= 1) {
+      startAudio();
+      return;
+    }
+
+    audio.addEventListener("loadedmetadata", startAudio, { once: true });
+    audio.load();
+  }
+
+  function startRadio() {
+    const randomTrack = Math.floor(Math.random() * tracks.length);
+    pendingRadioStartRef.current = true;
+
+    if (randomTrack === activeTrack) {
+      pendingRadioStartRef.current = false;
+      playSelectedTrack(true);
+      return;
+    }
+
+    setActiveTrack(randomTrack);
   }
 
   function togglePlayback() {
@@ -231,13 +274,7 @@ export default function Home() {
     if (!audio) return;
 
     if (audio.paused) {
-      audio
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-          setBeatPulse(0.86);
-        })
-        .catch(() => setIsPlaying(false));
+      startRadio();
     } else {
       audio.pause();
       setIsPlaying(false);
@@ -310,19 +347,13 @@ export default function Home() {
   function handleNext() {
     if (ipodMode === "snake") {
       setSnakeMove("right");
-      return;
     }
-
-    nextTrack();
   }
 
   function handlePrevious() {
     if (ipodMode === "snake") {
       setSnakeMove("left");
-      return;
     }
-
-    previousTrack();
   }
 
   function handleTopButton() {
@@ -506,6 +537,7 @@ export default function Home() {
           }}
           onPlay={() => {
             setIsPlaying(true);
+            setRadioStarted(true);
             setBeatPulse(0.86);
           }}
         />
@@ -521,7 +553,7 @@ export default function Home() {
           <div className="ipod-screen">
             <div className="ipod-tabs">
               <button className={ipodMode === "music" ? "active" : ""} onClick={() => setIpodMode("music")}>
-                Musik
+                Radio
               </button>
               <button className={ipodMode === "snake" ? "active" : ""} onClick={() => setIpodMode("snake")}>
                 Snake
@@ -529,22 +561,25 @@ export default function Home() {
             </div>
             {ipodMode === "music" ? (
               <>
-                <small>Playlist</small>
-                <ol className="ipod-list">
-                  {tracks.map((track, index) => (
-                    <li className={index === activeTrack ? "active" : ""} key={track.title}>
-                      <button onClick={() => setActiveTrack(index)}>
-                        <span>{track.title}</span>
-                        <small>{track.artist}</small>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
+                <small>{radioStarted ? "103.7 .fish FM" : "103.7 .fish FM bereit"}</small>
+                <div className={`radio-start-screen ${radioStarted ? "on-air" : ""}`}>
+                  <div className="radio-frequency">
+                    <span>103.7</span>
+                    <small>.fish FM</small>
+                  </div>
+                  <div className="radio-dancers" aria-hidden="true">
+                    <i />
+                    <b />
+                  </div>
+                  <strong>{radioStarted ? "ON AIR" : "START RADIO"}</strong>
+                  <span>{radioStarted ? tracks[activeTrack].artist : "shuffle broadcast"}</span>
+                  <small>{radioStarted ? tracks[activeTrack].title : "press play"}</small>
+                </div>
                 <div className="progress">
                   <i style={{ width: `${trackProgress}%` }} />
                 </div>
                 <p className="ipod-status">
-                  {isPlaying ? "Spielt" : "Pause"} · {tracks[activeTrack].title}
+                  {radioStarted ? `${isPlaying ? "On Air" : "Pause"} · ${tracks[activeTrack].title}` : "Radio wartet"}
                 </p>
               </>
             ) : (
@@ -575,10 +610,10 @@ export default function Home() {
           </div>
           <div className="wheel">
             <button onClick={handleTopButton}>MENU</button>
-            <button onClick={handleNext}>▶▶</button>
-            <button onClick={handlePrevious}>◀◀</button>
+            <button onClick={handleNext}>{ipodMode === "snake" ? "▶▶" : "FM"}</button>
+            <button onClick={handlePrevious}>{ipodMode === "snake" ? "◀◀" : "103.7"}</button>
             <button className="play-label" onClick={handleBottomButton}>
-              {ipodMode === "snake" ? "DOWN" : isPlaying ? "PAUSE" : "PLAY"}
+              {ipodMode === "snake" ? "DOWN" : isPlaying ? "OFF" : "ON"}
             </button>
             <button className="center" onClick={togglePlayback}>
               {ipodMode === "snake" ? (snakeRunning ? "Ⅱ" : "▶") : isPlaying ? "Ⅱ" : "▶"}
