@@ -59,16 +59,6 @@ const tracks = [
   { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
 ];
 
-const stickerOptions = [
-  "Aqua Star",
-  "Mixtape",
-  "Karaoke",
-  "Glitter Comment",
-  "Top 8 Energy",
-  "Afterparty Seal",
-  "iPod Approved",
-  "Main Character"
-];
 const themeOptions = [
   { value: "blue", label: "Aqua Blau", accent: "#66b9f1", background: "#dcecff" },
   { value: "green", label: "Limewire Gruen", accent: "#33b75a", background: "#dff7e5" },
@@ -127,6 +117,7 @@ export default function WallsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [newFishOpen, setNewFishOpen] = useState(false);
   const [fishType, setFishType] = useState<"text" | "image" | "song">("text");
+  const [postMode, setPostMode] = useState<"pin" | "collab">("pin");
   const [showFishPage, setShowFishPage] = useState(true);
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [followPulse, setFollowPulse] = useState(false);
@@ -347,6 +338,7 @@ export default function WallsPage() {
 
     setLoginHandle("");
     setLoginPassword("");
+    setShowFishPage(true);
     notify("Eingeloggt. Willkommen zurück auf .fish.");
     await loadWalls();
   }
@@ -452,6 +444,7 @@ export default function WallsPage() {
     notify(".fish erstellt und eingeloggt.");
     form.reset();
     setShowCreateFish(false);
+    setShowFishPage(true);
     await loadWalls();
   }
 
@@ -511,15 +504,21 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
-  async function createPost(payload: Partial<WallPost>) {
-    if (!viewProfile) return false;
+  async function createPost(payload: Partial<WallPost>, mode: "pin" | "collab" = postMode, collaboratorId = "") {
+    if (!viewProfile || !activeProfile) return false;
+
+    const isOtherProfile = viewProfile.id !== activeProfile.id;
+    const targetId = mode === "collab" ? activeProfile.id : viewProfile.id;
+    const nextCollaboratorId =
+      mode === "collab" ? collaboratorId || (isOtherProfile ? viewProfile.id : "") : "";
 
     const response = await fetch("/api/walls/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        targetId: viewProfile.id,
-        ...payload
+        targetId,
+        ...payload,
+        collaboratorId: nextCollaboratorId
       })
     });
     const data = await response.json();
@@ -538,16 +537,21 @@ export default function WallsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const text = String(formData.get("text") || "").trim();
+    const collaboratorId = String(formData.get("collaboratorId") || "");
 
     if (!text) return;
 
     notify(".fish wird gespeichert...");
-    const saved = await createPost({
-      postType: "text",
-      text,
-      sticker: String(formData.get("sticker") || stickerOptions[0]),
-      color: String(formData.get("color") || "#ffffff")
-    } as WallPost);
+    const saved = await createPost(
+      {
+        postType: "text",
+        text,
+        sticker: postMode === "collab" ? "Collab .fish" : "Text .fish",
+        color: String(formData.get("color") || "#ffffff")
+      } as WallPost,
+      postMode,
+      collaboratorId
+    );
     if (saved) {
       notify("Text-.fish ist im Feed.");
       form.reset();
@@ -563,6 +567,7 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const file = formData.get("image");
     const text = String(formData.get("text") || "").trim();
+    const collaboratorId = String(formData.get("collaboratorId") || "");
 
     if (!(file instanceof File) || !file.size) {
       notify("Bitte ein Bild auswählen.");
@@ -573,14 +578,17 @@ export default function WallsPage() {
 
     try {
       const upload = await uploadFiles([file], "pin");
-      const saved = await createPost({
-        postType: "image",
-        text: text || "Bild-.fish",
-        sticker: String(formData.get("sticker") || "Collab .fish"),
-        color: String(formData.get("color") || "#ffffff"),
-        mediaUrl: upload.urls[0],
-        collaboratorId: viewProfile.id !== activeProfile.id ? viewProfile.id : ""
-      } as WallPost);
+      const saved = await createPost(
+        {
+          postType: "image",
+          text: text || "Bild-.fish",
+          sticker: postMode === "collab" ? "Collab .fish" : "Bild .fish",
+          color: String(formData.get("color") || "#ffffff"),
+          mediaUrl: upload.urls[0]
+        } as WallPost,
+        postMode,
+        collaboratorId
+      );
       if (saved) {
         notify("Bild-.fish ist im Feed.");
         form.reset();
@@ -596,17 +604,22 @@ export default function WallsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const track = tracks[Number(formData.get("track")) || 0];
+    const collaboratorId = String(formData.get("collaboratorId") || "");
 
     notify("Song wird als .fish gepinnt...");
-    const saved = await createPost({
-      postType: "song",
-      text: String(formData.get("text") || "Song aus der Party-Playlist"),
-      sticker: "iPod Approved",
-      color: String(formData.get("color") || "#eef6ff"),
-      songTitle: track.title,
-      songArtist: track.artist,
-      songSrc: track.src
-    } as WallPost);
+    const saved = await createPost(
+      {
+        postType: "song",
+        text: String(formData.get("text") || "Song aus der Party-Playlist"),
+        sticker: postMode === "collab" ? "Collab Song" : "Song .fish",
+        color: String(formData.get("color") || "#eef6ff"),
+        songTitle: track.title,
+        songArtist: track.artist,
+        songSrc: track.src
+      } as WallPost,
+      postMode,
+      collaboratorId
+    );
     if (saved) {
       notify("Song-.fish ist im Feed.");
       form.reset();
@@ -716,6 +729,31 @@ export default function WallsPage() {
     if (!profileId) return;
     setViewProfileId(profileId);
     setShowFishPage(false);
+    setSideMenuOpen(false);
+  }
+
+  function openFishPage() {
+    setShowFishPage(true);
+    setSideMenuOpen(false);
+  }
+
+  function renderCollabSelect() {
+    if (!activeProfile || postMode !== "collab" || activeProfile.id !== viewProfile?.id) return null;
+
+    const possibleCollaborators = profiles.filter((profile) => profile.id !== activeProfile.id);
+
+    return (
+      <label>
+        Collab mit
+        <select name="collaboratorId" defaultValue={possibleCollaborators[0]?.id || ""} required>
+          {possibleCollaborators.map((profile) => (
+            <option value={profile.id} key={profile.id}>
+              {profile.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
   }
 
   function openNotification(note: { profileId: string; postId: string }) {
@@ -867,27 +905,39 @@ export default function WallsPage() {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
       />
-      <nav className="topbar" aria-label=".fish Navigation">
+      <nav className="topbar fish-topbar" aria-label=".fish Navigation">
         <div>
-          {activeProfile && <a href="#wall">.fish</a>}
+          <button className="fish-orb-brand" type="button" onClick={openFishPage}>
+            .fish V2
+          </button>
+          {activeProfile && (
+            <button className="fish-topbar-profile" type="button" onClick={() => openProfile(activeProfile.id)}>
+              <span className="mini-avatar">
+                {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
+              </span>
+              {activeProfile.name}
+            </button>
+          )}
         </div>
       </nav>
 
-      <section className="section walls-hero">
-        <div className="snow-window">
-          <div className="window-lights" aria-hidden="true">
-            <span />
-            <span />
-            <span />
+      {!activeProfile && (
+        <section className="section walls-hero">
+          <div className="snow-window">
+            <div className="window-lights" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <p className="eyebrow">.fish</p>
+            <h1>.fish</h1>
+            <p className="hero-copy">
+              Retro-Profile, Fotos, Pins, Playlist-Songs und echte gegenseitige Freundschaften. Erst einloggen oder
+              registrieren, dann öffnet sich dein Bereich.
+            </p>
           </div>
-          <p className="eyebrow">.fish</p>
-          <h1>.fish</h1>
-          <p className="hero-copy">
-            Retro-Profile, Fotos, Pins, Playlist-Songs und echte gegenseitige Freundschaften. Erst einloggen oder
-            registrieren, dann öffnet sich dein Bereich.
-          </p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {!activeProfile && (
         <section className="section walls-auth">
@@ -1059,6 +1109,33 @@ export default function WallsPage() {
                 <span>{activeProfile.name}</span>
               </button>
             </div>
+            <button className={`menu-nav-button ${showFishPage ? "active" : ""}`} type="button" onClick={openFishPage}>
+              .fishpage
+            </button>
+            <label className="fish-menu-search">
+              Suche
+              <input
+                value={profileSearch}
+                onChange={(event) => setProfileSearch(event.target.value)}
+                placeholder=".fish suchen"
+              />
+            </label>
+            <div className="fish-menu-results">
+              {visibleProfiles.map((profile) => (
+                <button
+                  className={profile.id === viewProfile.id && !showFishPage ? "active" : ""}
+                  key={profile.id}
+                  onClick={() => openProfile(profile.id)}
+                  type="button"
+                >
+                  <span className="mini-avatar">
+                    {profile.avatar ? <img src={profile.avatar} alt="" /> : profile.name[0]}
+                  </span>
+                  <span>{profile.name} {renderVerified(profile)}</span>
+                </button>
+              ))}
+              {!visibleProfiles.length && <span>Kein .fish gefunden.</span>}
+            </div>
             {isAdmin ? (
               <div className="fish-admin-box admin-on">
                 <strong>Admin aktiv</strong>
@@ -1105,29 +1182,6 @@ export default function WallsPage() {
             }`}
             style={wallStyle || undefined}
           >
-            <aside className="wall-directory">
-              <p className="eyebrow">Alle .fish Profile</p>
-              <button className={showFishPage ? "active" : ""} onClick={() => setShowFishPage(true)}>
-                .fishpage
-              </button>
-              <input
-                className="fish-search"
-                value={profileSearch}
-                onChange={(event) => setProfileSearch(event.target.value)}
-                placeholder=".fish suchen"
-              />
-              {visibleProfiles.map((profile) => (
-                <button
-                  className={profile.id === viewProfile.id ? "active" : ""}
-                  key={profile.id}
-                  onClick={() => openProfile(profile.id)}
-                >
-                  {profile.name} {renderVerified(profile)}
-                </button>
-              ))}
-              {!visibleProfiles.length && <p>Kein .fish gefunden.</p>}
-            </aside>
-
             {showFishPage ? (
               <article className="myspace-card fishpage-card">
                 <div className="myspace-topbar">
@@ -1149,10 +1203,18 @@ export default function WallsPage() {
                     </div>
                     <div className="pinned-ribbon">pinned</div>
                     <strong>Kimons Party Website</strong>
-                    <div className="party-news-orbit" aria-hidden="true">
+                    <div className="party-news-balloons" aria-hidden="true">
                       <span />
                       <span />
                       <span />
+                    </div>
+                    <div className="party-news-confetti" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
                     </div>
                     <p>
                       Kimon's 23. Geburtstag ist hier angepinnt: 27.06.2026, 19:00, Wendelinstraße 94.
@@ -1268,20 +1330,33 @@ export default function WallsPage() {
                       Song
                     </button>
                   </div>
+                  <div className="fish-mode-tabs">
+                    <button
+                      className={postMode === "pin" ? "active" : ""}
+                      type="button"
+                      onClick={() => setPostMode("pin")}
+                    >
+                      Bei Profil anpinnen
+                    </button>
+                    <button
+                      className={postMode === "collab" ? "active" : ""}
+                      type="button"
+                      onClick={() => setPostMode("collab")}
+                    >
+                      Collab-.fish
+                    </button>
+                  </div>
+                  <p className="fish-mode-help">
+                    Anpinnen heißt: du postest etwas auf dem geöffneten Profil. Collab heißt: es wird als gemeinsames
+                    .fish mit beiden Namen angezeigt.
+                  </p>
 
                   {fishType === "text" && (
                     <form className="pin-form" onSubmit={pinText}>
+                      {renderCollabSelect()}
                       <label>
                         Text-.fish
                         <textarea name="text" placeholder={`Schreib etwas in ${viewProfile.name}s Feed`} required />
-                      </label>
-                      <label>
-                        Stil
-                        <select name="sticker" defaultValue={stickerOptions[0]}>
-                          {stickerOptions.map((sticker) => (
-                            <option key={sticker}>{sticker}</option>
-                          ))}
-                        </select>
                       </label>
                       <label>
                         Farbe
@@ -1293,6 +1368,7 @@ export default function WallsPage() {
 
                   {fishType === "image" && (
                     <form className="pin-form" onSubmit={pinImage}>
+                      {renderCollabSelect()}
                       <label>
                         Bild-.fish
                         <input name="image" type="file" accept="image/*" required />
@@ -1300,15 +1376,6 @@ export default function WallsPage() {
                       <label>
                         Caption
                         <input name="text" placeholder="Kurzer Text zum Bild" />
-                      </label>
-                      <label>
-                        Stil
-                        <select name="sticker" defaultValue="Collab .fish">
-                          <option>Collab .fish</option>
-                          {stickerOptions.map((sticker) => (
-                            <option key={sticker}>{sticker}</option>
-                          ))}
-                        </select>
                       </label>
                       <label>
                         Farbe
@@ -1320,6 +1387,7 @@ export default function WallsPage() {
 
                   {fishType === "song" && (
                     <form className="pin-form" onSubmit={pinSong}>
+                      {renderCollabSelect()}
                       <label>
                         Song-.fish
                         <select name="track" defaultValue="0">

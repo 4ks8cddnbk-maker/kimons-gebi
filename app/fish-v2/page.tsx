@@ -1,17 +1,30 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 
 const tracks = [
-  { title: "Moment", artist: "C4RL" },
-  { title: "Party In The U.S.A.", artist: "Miley Cyrus" },
-  { title: "The One That Got Away", artist: "Katy Perry" }
+  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
+  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
+  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
 ];
 
 export default function FishV2Gate() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [activeTrack, setActiveTrack] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [trackProgress, setTrackProgress] = useState(0);
+  const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.load();
+    setTrackProgress(0);
+    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+  }, [activeTrack, isPlaying]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,8 +44,43 @@ export default function FishV2Gate() {
     window.location.href = "/walls";
   }
 
+  function previousTrack() {
+    setActiveTrack((activeTrack + tracks.length - 1) % tracks.length);
+  }
+
+  function nextTrack() {
+    setActiveTrack((activeTrack + 1) % tracks.length);
+  }
+
+  function togglePlayback() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      return;
+    }
+
+    audio.pause();
+    setIsPlaying(false);
+  }
+
+  function updateProgress() {
+    const audio = audioRef.current;
+    if (!audio?.duration) return;
+    setTrackProgress((audio.currentTime / audio.duration) * 100);
+  }
+
+  function tiltIpod(event: MouseEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientY - rect.top) / rect.height - 0.5) * -12;
+    const y = ((event.clientX - rect.left) / rect.width - 0.5) * 12;
+    setIpodTilt({ x, y });
+  }
+
   return (
     <main className="fish-v2-gate">
+      <audio ref={audioRef} src={tracks[activeTrack].src} onTimeUpdate={updateProgress} onEnded={nextTrack} />
       <button className="v2-admin-trigger" type="button" onClick={() => setMenuOpen((value) => !value)}>
         admin
       </button>
@@ -54,7 +102,7 @@ export default function FishV2Gate() {
       )}
 
       <section className="v2-hero">
-        <div className="v2-window">
+        <div className="v2-window v2-super-window">
           <div className="myspace-topbar">
             <span />
             <span />
@@ -62,37 +110,49 @@ export default function FishV2Gate() {
             <strong>.fish V2.0</strong>
           </div>
           <div className="v2-window-body">
-            <p className="eyebrow">snow leopard preview</p>
-            <h1>currently working on .fish V2</h1>
-            <p>glassy profiles, cleaner feeds, brighter colors, better party internet.</p>
+            <h1>currently working on .fish V2, stay tuned for our largest update.</h1>
           </div>
         </div>
       </section>
 
-      <section className="v2-waiting">
-        <p className="eyebrow">while you wait</p>
-        <h2>scroll down, press play in your head.</h2>
-        <div className="v2-ipod">
-          <div className="v2-ipod-screen">
-            <strong>iPod von Kimon</strong>
-            <div className="v2-storage">
-              <span>1.0 GB Used</span>
-              <span>732 GB Free</span>
+      <section className={`section ipod-section v2-preview-ipod ${isPlaying ? "party-mode" : ""}`}>
+        <div
+          className="ipod"
+          onMouseMove={tiltIpod}
+          onMouseLeave={() => setIpodTilt({ x: 0, y: 0 })}
+          style={{ transform: `rotateX(${ipodTilt.x}deg) rotateY(${ipodTilt.y}deg)` }}
+        >
+          <div className="ipod-screen">
+            <div className="ipod-tabs">
+              <button className="active">Music</button>
             </div>
-            <div className="v2-bar">
-              <i />
+            <small>iPod von Kimon</small>
+            <div>
+              <ol className="ipod-list">
+                {tracks.map((track, index) => (
+                  <li className={index === activeTrack ? "active" : ""} key={track.src}>
+                    <button onClick={() => setActiveTrack(index)}>
+                      <span>{track.title}</span>
+                      <small>{track.artist}</small>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <div className="progress">
+                <i style={{ width: `${trackProgress}%` }} />
+              </div>
+              <p className="ipod-status">
+                {isPlaying ? "Spielt" : "Pause"} · {tracks[activeTrack].title}
+              </p>
             </div>
-            <ul>
-              {tracks.map((track) => (
-                <li key={track.title}>
-                  {track.title} <span>{track.artist}</span>
-                </li>
-              ))}
-            </ul>
           </div>
-          <div className="v2-clickwheel">
-            <span>MENU</span>
-            <b>▶</b>
+          <div className="wheel">
+            <button onClick={previousTrack}>◀</button>
+            <button onClick={nextTrack}>▶</button>
+            <button onClick={togglePlayback}>{isPlaying ? "PAUSE" : "PLAY"}</button>
+            <button className="center" onClick={togglePlayback}>
+              {isPlaying ? "Ⅱ" : "▶"}
+            </button>
           </div>
         </div>
       </section>

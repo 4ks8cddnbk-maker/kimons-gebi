@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       collaboratorId: payload.collaboratorId || "",
       postType: payload.postType || "text",
       text: payload.text,
-      sticker: payload.sticker || "Aqua Star",
+      sticker: payload.sticker || "Neues .fish",
       color: payload.color || "#ffffff",
       mediaUrl: payload.mediaUrl || "",
       songTitle: payload.songTitle || "",
