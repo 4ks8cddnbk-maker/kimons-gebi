@@ -183,10 +183,12 @@ textarea {
 .fish-topbar div {
   width: min(100%, 1120px);
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .fish-orb-brand,
+.fish-home-profile,
 .fish-topbar-profile {
   display: inline-flex;
   align-items: center;
@@ -214,6 +216,53 @@ textarea {
 
 .fish-topbar-profile {
   padding: 6px 12px 6px 7px;
+}
+
+.fish-home-profile {
+  position: relative;
+  min-width: 0;
+  padding: 5px 14px 5px 5px;
+  color: #173249;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.96), transparent 24%),
+    radial-gradient(circle at 88% 18%, rgba(255, 110, 159, 0.26), transparent 23%),
+    linear-gradient(#ffffff, #dfefff 48%, #bdd8f4 49%, #edf7ff);
+  border-color: rgba(61, 121, 177, 0.72);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -8px 12px rgba(47, 130, 189, 0.12),
+    0 10px 24px rgba(23, 40, 68, 0.16);
+}
+
+.fish-home-profile::after {
+  content: "";
+  position: absolute;
+  inset: 4px 10px auto 48px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.fish-home-profile small,
+.fish-home-profile b {
+  display: block;
+  line-height: 1.05;
+}
+
+.fish-home-profile small {
+  color: #46729e;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fish-home-profile b {
+  overflow: hidden;
+  max-width: 148px;
+  color: #173249;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand {
@@ -1005,11 +1054,6 @@ figcaption {
   animation: party-lights 1120ms steps(2, end) infinite;
 }
 
-.ipod-section.party-mode .sound-wave {
-  opacity: 1;
-  filter: saturate(1.12);
-}
-
 .ipod {
   position: relative;
   width: min(380px, 100%);
@@ -1190,50 +1234,6 @@ figcaption {
 .ipod-section.party-mode .progress i {
   background: linear-gradient(90deg, #6dd0ff, #28c840, #ffbd2e, #ff5f57);
   box-shadow: 0 0 10px rgba(109, 208, 255, 0.58);
-}
-
-.sound-wave {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 3px;
-  height: 34px;
-  margin-top: 10px;
-  padding: 6px 7px;
-  opacity: 0.72;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.12)),
-    rgba(28, 53, 82, 0.16);
-  border: 1px solid rgba(42, 67, 98, 0.16);
-  border-radius: 7px;
-  box-shadow: inset 0 1px 4px rgba(20, 38, 61, 0.14);
-}
-
-.sound-wave span {
-  width: 7px;
-  height: calc(6px + (var(--wave, 0.18) * 23px));
-  min-height: 5px;
-  background:
-    linear-gradient(#ffffff, rgba(255, 255, 255, 0.35) 18%, transparent 19%),
-    linear-gradient(180deg, #6dd0ff, #28c840 44%, #ffbd2e 72%, #ff5f57);
-  border: 1px solid rgba(21, 95, 159, 0.18);
-  border-radius: 999px;
-  box-shadow:
-    0 0 calc(3px + (var(--wave, 0.18) * 8px)) rgba(109, 208, 255, 0.44),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  transition: height 90ms linear;
-}
-
-.sound-wave span:nth-child(3n) {
-  background:
-    linear-gradient(#ffffff, rgba(255, 255, 255, 0.3) 18%, transparent 19%),
-    linear-gradient(180deg, #ff8ab2, #9f7dff 48%, #2f82bd);
-}
-
-.sound-wave span:nth-child(4n) {
-  background:
-    linear-gradient(#ffffff, rgba(255, 255, 255, 0.3) 18%, transparent 19%),
-    linear-gradient(180deg, #fff477, #ffbd2e 42%, #ff5f57);
 }
 
 .ipod-status {
@@ -2256,6 +2256,7 @@ footer {
 .fish-dock-toggle:hover,
 .fish-bell:hover,
 .fish-orb-brand:hover,
+.fish-home-profile:hover,
 .fish-topbar-profile:hover {
   transform: translateY(-2px);
   box-shadow:
@@ -3021,7 +3022,7 @@ footer {
   display: block;
   width: auto;
   max-width: 100%;
-  max-height: min(620px, 72vh);
+  max-height: min(680px, 74vh);
   object-fit: contain;
   background: linear-gradient(#f9fbff, #dce4ef);
   border: 8px solid rgba(255, 255, 255, 0.88);
@@ -3035,8 +3036,8 @@ footer {
 .post-image-frame {
   display: grid;
   place-items: center;
-  margin: 10px 0 14px;
-  padding: clamp(12px, 2.6vw, 22px);
+  margin: 12px 0 24px;
+  padding: clamp(14px, 2.8vw, 26px) clamp(14px, 2.8vw, 26px) clamp(22px, 3.4vw, 34px);
   background:
     radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.9), transparent 24%),
     radial-gradient(circle at 84% 82%, color-mix(in srgb, var(--pin-color, #fff), #66d4ff 28%), transparent 34%),
@@ -3261,19 +3262,42 @@ footer {
 .reaction-buttons button span {
   display: grid;
   place-items: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 3px;
-  color: inherit;
-  font-size: 13px;
-  font-weight: 950;
-  background: rgba(255, 255, 255, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.34);
+  width: 31px;
+  min-width: 31px;
+  height: 31px;
+  padding: 0;
+  background:
+    radial-gradient(circle at 33% 18%, rgba(255, 255, 255, 0.95), transparent 27%),
+    linear-gradient(#f8fcff, #bddcf9 52%, #73afe3);
+  border: 1px solid rgba(85, 139, 184, 0.42);
   border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -5px 8px rgba(47, 130, 189, 0.16),
+    0 5px 9px rgba(23, 40, 68, 0.16);
 }
 
 .reaction-buttons button small {
   font-size: 11px;
+}
+
+.reaction-svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.42))
+    drop-shadow(0 2px 2px rgba(23, 40, 68, 0.18));
+  transition: transform 150ms ease;
+}
+
+.reaction-hundred {
+  width: 29px;
+}
+
+.reaction-buttons button.active .reaction-svg,
+.reaction-buttons button:hover .reaction-svg {
+  transform: scale(1.08);
 }
 
 .reaction-summary {
@@ -3289,9 +3313,20 @@ footer {
 }
 
 .reaction-summary b {
-  display: inline-flex;
-  min-width: 30px;
-  color: #156bad;
+  display: inline-grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  vertical-align: middle;
+}
+
+.reaction-summary .reaction-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.reaction-summary .reaction-hundred {
+  width: 23px;
 }
 
 .fish-comment {
@@ -3688,7 +3723,8 @@ footer {
   .fish-topbar div {
     width: 100%;
     flex-wrap: nowrap;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 7px;
   }
 
   .fish-orb-brand {
@@ -3696,8 +3732,9 @@ footer {
     font-size: 14px;
   }
 
+  .fish-home-profile,
   .fish-topbar-profile {
-    max-width: 52vw;
+    max-width: 54vw;
     padding: 5px 9px 5px 5px;
     overflow: hidden;
     font-size: 13px;
@@ -3705,6 +3742,19 @@ footer {
     white-space: nowrap;
   }
 
+  .fish-home-profile b {
+    max-width: 104px;
+  }
+
+  .fish-home-profile small {
+    font-size: 8px;
+  }
+
+  .fish-home-profile::after {
+    left: 42px;
+  }
+
+  .fish-home-profile .mini-avatar,
   .fish-topbar-profile .mini-avatar {
     width: 30px;
     height: 30px;
@@ -3823,7 +3873,8 @@ footer {
   }
 
   .post-image-frame {
-    padding: 9px;
+    margin-bottom: 22px;
+    padding: 10px 10px 18px;
     border-radius: 14px;
   }
 

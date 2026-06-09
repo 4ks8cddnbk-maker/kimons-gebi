@@ -61,11 +61,11 @@ const tracks = [
 
 const reactionPrefix = "__reaction__:";
 const reactionOptions = [
-  { key: "thumbs-up", label: "Daumen hoch", icon: "👍" },
-  { key: "wow", label: "Erstaunt", icon: "!" },
-  { key: "heart-eyes", label: "Herzaugen", icon: "♥" },
-  { key: "laugh-cry", label: "Lacht", icon: "XD" },
-  { key: "hundred", label: "100!", icon: "100!" }
+  { key: "thumbs-up", label: "Daumen hoch" },
+  { key: "wow", label: "Erstaunt" },
+  { key: "heart-eyes", label: "Herzaugen" },
+  { key: "laugh-cry", label: "Lacht" },
+  { key: "hundred", label: "100!" }
 ];
 
 const themeOptions = [
@@ -106,6 +106,77 @@ function normalizeHandle(handle: string) {
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function ReactionIcon({ type }: { type: string }) {
+  if (type === "thumbs-up") {
+    return (
+      <svg className="reaction-svg reaction-thumbs-up" viewBox="0 0 42 42" aria-hidden="true">
+        <defs>
+          <linearGradient id="thumbAqua" x1="8" x2="34" y1="6" y2="36" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#ffffff" />
+            <stop offset="0.38" stopColor="#7bd5ff" />
+            <stop offset="1" stopColor="#2477c8" />
+          </linearGradient>
+        </defs>
+        <path d="M14 18h-4.5c-1.5 0-2.5 1.1-2.5 2.6v13c0 1.5 1 2.4 2.5 2.4H14z" fill="#1e75bc" />
+        <path
+          d="M15 17.6c3.7-3.3 5.5-6.2 6.5-10.2.4-1.6 2.2-2.4 3.7-1.6 1.8.9 2.1 3.2 1.4 6.2l-.7 2.9h6.7c2.3 0 4.2 2 3.8 4.3l-2.2 12.7c-.4 2.4-2.5 4.1-4.9 4.1H15z"
+          fill="url(#thumbAqua)"
+          stroke="#18588f"
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+        <path d="M17.5 20.8h14.2" stroke="#fff" strokeLinecap="round" strokeWidth="2" opacity="0.72" />
+      </svg>
+    );
+  }
+
+  if (type === "wow") {
+    return (
+      <svg className="reaction-svg reaction-wow" viewBox="0 0 42 42" aria-hidden="true">
+        <circle cx="21" cy="21" r="17" fill="#ffcf5a" stroke="#a86b00" strokeWidth="2" />
+        <ellipse cx="15" cy="17" rx="2.7" ry="4.3" fill="#24334a" />
+        <ellipse cx="27" cy="17" rx="2.7" ry="4.3" fill="#24334a" />
+        <ellipse cx="21" cy="28" rx="5.2" ry="6.5" fill="#24334a" />
+        <path d="M13 10c2.2-1.5 4.6-1.7 7.1-.4M22 9.6c2.5-1.3 4.9-1.1 7.1.4" stroke="#7b4d00" strokeLinecap="round" strokeWidth="2" />
+        <path d="M12 9c5-3.1 13-3.5 18.2.2" stroke="#fff" strokeLinecap="round" strokeWidth="2" opacity="0.46" />
+      </svg>
+    );
+  }
+
+  if (type === "heart-eyes") {
+    return (
+      <svg className="reaction-svg reaction-heart-eyes" viewBox="0 0 42 42" aria-hidden="true">
+        <circle cx="21" cy="21" r="17" fill="#ffca55" stroke="#a76700" strokeWidth="2" />
+        <path d="M13 12.7c-2.2 0-3.9 1.7-3.9 3.8 0 4.1 6.7 7.4 6.9 7.5.2-.1 6.9-3.4 6.9-7.5 0-2.1-1.7-3.8-3.9-3.8-1.3 0-2.4.6-3 1.6-.6-1-1.7-1.6-3-1.6z" fill="#ff4f8c" stroke="#a81e51" strokeWidth="1.4" />
+        <path d="M26 12.7c-2.2 0-3.9 1.7-3.9 3.8 0 4.1 6.7 7.4 6.9 7.5.2-.1 6.9-3.4 6.9-7.5 0-2.1-1.7-3.8-3.9-3.8-1.3 0-2.4.6-3 1.6-.6-1-1.7-1.6-3-1.6z" fill="#ff4f8c" stroke="#a81e51" strokeWidth="1.4" />
+        <path d="M13.5 28.2c3.4 4.5 11.5 4.5 15 0" stroke="#743c00" strokeLinecap="round" strokeWidth="2.6" />
+      </svg>
+    );
+  }
+
+  if (type === "laugh-cry") {
+    return (
+      <svg className="reaction-svg reaction-laugh-cry" viewBox="0 0 42 42" aria-hidden="true">
+        <circle cx="21" cy="21" r="17" fill="#ffd45f" stroke="#a76700" strokeWidth="2" />
+        <path d="M12.5 18.2c1.7-2 4.1-2 5.8 0M23.7 18.2c1.7-2 4.1-2 5.8 0" stroke="#24334a" strokeLinecap="round" strokeWidth="2.4" />
+        <path d="M13.4 24.5c2.4 7.8 12.8 7.8 15.2 0z" fill="#24334a" />
+        <path d="M15.7 27.8c3 2.4 7.5 2.4 10.5 0" stroke="#fff" strokeLinecap="round" strokeWidth="1.8" opacity="0.82" />
+        <path d="M8.2 23.3c-3.2 2.8-3.4 7.1-.6 8.5 2.6 1.3 5.7-.9 5.8-5.4zM33.8 23.3c3.2 2.8 3.4 7.1.6 8.5-2.6 1.3-5.7-.9-5.8-5.4z" fill="#65c7ff" stroke="#237abd" strokeWidth="1.4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="reaction-svg reaction-hundred" viewBox="0 0 56 42" aria-hidden="true">
+      <rect x="3" y="7" width="50" height="28" rx="10" fill="#ff5f57" stroke="#9d211c" strokeWidth="2" />
+      <path d="M9 13h38" stroke="#fff" strokeLinecap="round" strokeWidth="2" opacity="0.48" />
+      <text x="28" y="27" textAnchor="middle" fontSize="14" fontWeight="900" fill="#fff" fontFamily="Verdana, sans-serif">
+        100!
+      </text>
+    </svg>
+  );
 }
 
 export default function WallsPage() {
@@ -990,7 +1061,9 @@ export default function WallsPage() {
                 onClick={() => reactToPost(post.id, reaction.key)}
                 title={reaction.label}
               >
-                <span>{reaction.icon}</span>
+                <span>
+                  <ReactionIcon type={reaction.key} />
+                </span>
                 <small>{reaction.label}</small>
               </button>
             ))}
@@ -1005,7 +1078,10 @@ export default function WallsPage() {
 
               return (
                 <p key={reaction.key}>
-                  <b>{reaction.icon}</b> {actors.join(", ")}
+                  <b>
+                    <ReactionIcon type={reaction.key} />
+                  </b>{" "}
+                  {actors.join(", ")}
                 </p>
               );
             })}
@@ -1048,11 +1124,14 @@ export default function WallsPage() {
             .fish V2
           </button>
           {activeProfile && (
-            <button className="fish-topbar-profile" type="button" onClick={() => openProfile(activeProfile.id)}>
+            <button className="fish-home-profile" type="button" onClick={() => openProfile(activeProfile.id)}>
               <span className="mini-avatar">
                 {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
               </span>
-              {activeProfile.name}
+              <span>
+                <small>Mein Profil</small>
+                <b>{activeProfile.name}</b>
+              </span>
             </button>
           )}
         </div>
