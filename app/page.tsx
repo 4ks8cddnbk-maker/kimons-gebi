@@ -174,7 +174,7 @@ export default function Home() {
     audio.load();
     setTrackProgress(0);
 
-    if (pendingRadioStartRef.current || isPlaying) {
+    if (pendingRadioStartRef.current || radioStarted) {
       const shouldJumpIntoSong = pendingRadioStartRef.current;
       pendingRadioStartRef.current = false;
       playSelectedTrack(shouldJumpIntoSong);
@@ -235,7 +235,7 @@ export default function Home() {
       audio
         .play()
         .then(() => {
-          setIsPlaying(true);
+          setIsPlaying(!audio.muted);
           setRadioStarted(true);
           setBeatPulse(0.86);
         })
@@ -276,9 +276,9 @@ export default function Home() {
     if (audio.paused) {
       startRadio();
     } else {
-      audio.pause();
-      setIsPlaying(false);
-      setBeatPulse(0);
+      audio.muted = !audio.muted;
+      setIsPlaying(!audio.muted);
+      setBeatPulse(audio.muted ? 0 : 0.86);
     }
   }
 
@@ -432,17 +432,7 @@ export default function Home() {
 
   return (
     <main>
-      <nav className="topbar" aria-label="Hauptnavigation">
-        <div>
-          <a href="#home">Start</a>
-          <a href="#ipod">iPod</a>
-          <a href="#karaoke">Karaoke</a>
-          <a href="/walls">.fish</a>
-          <a href="#dresscode">Dresscode</a>
-          <a href="#galerie">Fotos</a>
-          <a href="/admin">Admin</a>
-        </div>
-      </nav>
+      <a className="party-fish-return" href="/walls">Zurück zu .fish</a>
 
       <section id="home" className="hero">
         <div className="snow-window hero-window">
@@ -536,7 +526,7 @@ export default function Home() {
             setBeatPulse(0);
           }}
           onPlay={() => {
-            setIsPlaying(true);
+            setIsPlaying(!audioRef.current?.muted);
             setRadioStarted(true);
             setBeatPulse(0.86);
           }}

@@ -222,7 +222,8 @@ function toPostRow(post: SupabaseWallPost) {
     media_url: post.mediaUrl || null,
     song_title: post.songTitle || null,
     song_artist: post.songArtist || null,
-    song_src: post.songSrc || null
+    song_src: post.songSrc || null,
+    created_at: post.createdAt
   };
 }
 
@@ -262,11 +263,7 @@ async function supabaseRest(path: string, init: RequestInit = {}) {
 export async function listWallProfiles() {
   const response = await supabaseRest("wall_profiles?select=*&order=created_at.asc");
   const rows = (await response.json()) as ProfileRow[];
-
-  if (rows.length) return rows.map(toProfile);
-
-  await createWallProfile(defaultWallProfile, "");
-  return [defaultWallProfile];
+  return rows.map(toProfile);
 }
 
 export async function createWallProfile(profile: SupabaseProfile, passwordHash: string) {
@@ -317,6 +314,15 @@ export async function updateWallProfile(id: string, profile: Partial<SupabasePro
   return rows[0] ? toProfile(rows[0]) : null;
 }
 
+export async function updateWallProfilePassword(id: string, passwordHash: string) {
+  const response = await supabaseRest(`wall_profiles?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ password_hash: passwordHash })
+  });
+  const rows = (await response.json()) as ProfileRow[];
+  return rows[0] ? toProfile(rows[0]) : null;
+}
+
 export async function updateWallProfilePhotos(id: string, photos: string[]) {
   const response = await supabaseRest(`wall_profiles?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -332,14 +338,14 @@ export async function listWallPosts() {
   return rows.map(toPost);
 }
 
-export async function createWallPost(post: Omit<SupabaseWallPost, "id" | "createdAt">) {
+export async function createWallPost(post: Omit<SupabaseWallPost, "id" | "createdAt"> & { createdAt?: string }) {
   const response = await supabaseRest("wall_posts", {
     method: "POST",
     body: JSON.stringify(
       toPostRow({
         ...post,
         id: createId(),
-        createdAt: new Date().toISOString()
+        createdAt: post.createdAt || new Date().toISOString()
       })
     )
   });

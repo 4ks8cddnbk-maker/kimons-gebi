@@ -90,7 +90,11 @@ const fontOptions = [
   { value: "lucida", label: "Lucida Grande" },
   { value: "georgia", label: "Georgia Blog" },
   { value: "mono", label: "Terminal Mono" },
-  { value: "verdana", label: "Verdana Web" }
+  { value: "verdana", label: "Verdana Web" },
+  { value: "pixel", label: "Pixel Arcade" },
+  { value: "script", label: "Glitzer Script" },
+  { value: "bubble", label: "Bubble Pop" },
+  { value: "editorial", label: "Editorial Serif" }
 ];
 const densityOptions = [
   { value: "compact", label: "Kompakt" },
@@ -214,6 +218,7 @@ export default function WallsPage() {
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [radioStarted, setRadioStarted] = useState(false);
+  const [postFontStyle, setPostFontStyle] = useState("lucida");
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingRadioStartRef = useRef(false);
   const pendingDirectStartRef = useRef(false);
@@ -406,7 +411,7 @@ export default function WallsPage() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (pendingRadioStartRef.current || pendingDirectStartRef.current || isPlaying) {
+    if (pendingRadioStartRef.current || pendingDirectStartRef.current || radioStarted) {
       const shouldJumpIntoSong = pendingRadioStartRef.current;
       pendingRadioStartRef.current = false;
       pendingDirectStartRef.current = false;
@@ -631,7 +636,8 @@ export default function WallsPage() {
       fontStyle: String(formData.get("fontStyle") || editableProfile.fontStyle),
       layoutDensity: String(formData.get("layoutDensity") || editableProfile.layoutDensity),
       verified: isAdmin ? formData.get("verified") === "on" : editableProfile.verified,
-      glitter: formData.get("glitter") === "on"
+      glitter: formData.get("glitter") === "on",
+      password: isAdmin ? String(formData.get("newPassword") || "").trim() : ""
     };
 
     const response = await fetch("/api/walls/profiles", {
@@ -666,7 +672,9 @@ export default function WallsPage() {
       return false;
     }
 
-    const targetId = activeProfile.id;
+    const adminAuthorId = isAdmin ? String((document.querySelector("[name='adminAuthorId']") as HTMLSelectElement | null)?.value || "") : "";
+    const adminCreatedAt = isAdmin ? String((document.querySelector("[name='adminCreatedAt']") as HTMLInputElement | null)?.value || "") : "";
+    const targetId = adminAuthorId || activeProfile.id;
     const nextCollaboratorId =
       mode === "collab" ? collaboratorId || (isOtherProfile ? viewProfile.id : "") : "";
 
@@ -676,7 +684,9 @@ export default function WallsPage() {
       body: JSON.stringify({
         targetId,
         ...payload,
-        collaboratorId: nextCollaboratorId
+        collaboratorId: nextCollaboratorId,
+        authorId: adminAuthorId,
+        createdAt: adminCreatedAt
       })
     });
     const data = await response.json();
@@ -696,6 +706,7 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const text = String(formData.get("text") || "").trim();
     const collaboratorId = String(formData.get("collaboratorId") || "");
+    const fontStyle = String(formData.get("postFontStyle") || "lucida");
 
     if (!text) return;
 
@@ -704,7 +715,7 @@ export default function WallsPage() {
       {
         postType: "text",
         text,
-        sticker: postMode === "collab" ? "Collab .fish" : "Text .fish",
+        sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab .fish" : "Text .fish"}`,
         color: String(formData.get("color") || "#ffffff")
       } as WallPost,
       postMode,
@@ -726,6 +737,7 @@ export default function WallsPage() {
     const file = formData.get("image");
     const text = String(formData.get("text") || "").trim();
     const collaboratorId = String(formData.get("collaboratorId") || "");
+    const fontStyle = String(formData.get("postFontStyle") || "lucida");
 
     if (!(file instanceof File) || !file.size) {
       notify("Bitte ein Bild auswählen.");
@@ -740,7 +752,7 @@ export default function WallsPage() {
         {
           postType: "image",
           text: text || "Bild-.fish",
-          sticker: postMode === "collab" ? "Collab .fish" : "Bild .fish",
+          sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab .fish" : "Bild .fish"}`,
           color: String(formData.get("color") || "#ffffff"),
           mediaUrl: upload.urls[0]
         } as WallPost,
@@ -763,13 +775,14 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const track = tracks[Number(formData.get("track")) || 0];
     const collaboratorId = String(formData.get("collaboratorId") || "");
+    const fontStyle = String(formData.get("postFontStyle") || "lucida");
 
     notify("Song wird als .fish gepinnt...");
     const saved = await createPost(
       {
         postType: "song",
         text: String(formData.get("text") || "Song aus der Party-Playlist"),
-        sticker: postMode === "collab" ? "Collab Song" : "Song .fish",
+        sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab Song" : "Song .fish"}`,
         color: String(formData.get("color") || "#eef6ff"),
         songTitle: track.title,
         songArtist: track.artist,
@@ -947,6 +960,46 @@ export default function WallsPage() {
     );
   }
 
+  function renderPostOptions() {
+    return (
+      <div className="post-options-panel">
+        <label>
+          Schrift fuer diesen .fish
+          <select
+            name="postFontStyle"
+            value={postFontStyle}
+            onChange={(event) => setPostFontStyle(event.target.value)}
+          >
+            {fontOptions.map((font) => (
+              <option value={font.value} key={font.value}>
+                {font.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className={`font-preview-card font-${postFontStyle}`}>So sieht dein .fish Text aus.</div>
+        {isAdmin && (
+          <>
+            <label>
+              Als Profil posten
+              <select name="adminAuthorId" defaultValue={activeProfile?.id || ""}>
+                {profiles.map((profile) => (
+                  <option value={profile.id} key={profile.id}>
+                    {profile.name} (@{profile.handle})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Datum manipulieren
+              <input name="adminCreatedAt" type="datetime-local" />
+            </label>
+          </>
+        )}
+      </div>
+    );
+  }
+
   function openNotification(note: { profileId: string; postId: string }) {
     openProfile(note.profileId);
     setNotificationsOpen(false);
@@ -975,7 +1028,7 @@ export default function WallsPage() {
       audio
         .play()
         .then(() => {
-          setIsPlaying(true);
+          setIsPlaying(!audio.muted);
           setRadioStarted(true);
         })
         .catch(() => setIsPlaying(false));
@@ -1026,8 +1079,8 @@ export default function WallsPage() {
       return;
     }
 
-    audio.pause();
-    setIsPlaying(false);
+    audio.muted = !audio.muted;
+    setIsPlaying(!audio.muted);
   }
 
   function nextTrack() {
@@ -1077,13 +1130,16 @@ export default function WallsPage() {
       Boolean(activeProfile) && (post.authorId === activeProfile?.id || post.targetId === activeProfile?.id);
     const activeReaction = postReactions.find((reaction) => reaction.authorId === activeProfile?.id)?.text.replace(reactionPrefix, "");
     const canReact = Boolean(activeProfile && post.authorId !== activeProfile.id);
+    const stickerParts = post.sticker.startsWith("font:") ? post.sticker.split("|") : [];
+    const postFont = stickerParts[0]?.replace("font:", "") || "lucida";
+    const postLabel = stickerParts[1] || post.sticker;
 
     return (
       <article
         id={`fish-post-${post.id}`}
         className={`wall-post post-${post.postType} ${post.postType === "image" ? "image-wall-post" : ""} ${
           highlightedPostId === post.id ? "highlighted" : ""
-        }`}
+        } font-${postFont}`}
         key={post.id}
         style={{ "--pin-color": post.color } as CSSProperties}
       >
@@ -1106,7 +1162,7 @@ export default function WallsPage() {
             .fish loeschen
           </button>
         )}
-        <strong>{post.sticker}</strong>
+        <strong>{postLabel}</strong>
         {post.postType === "image" && post.mediaUrl && (
           <figure className="post-image-frame">
             <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
@@ -1189,7 +1245,7 @@ export default function WallsPage() {
         src={tracks[activeTrack].src}
         onEnded={nextTrack}
         onPlay={() => {
-          setIsPlaying(true);
+          setIsPlaying(!audioRef.current?.muted);
           setRadioStarted(true);
         }}
         onPause={() => setIsPlaying(false)}
@@ -1329,6 +1385,17 @@ export default function WallsPage() {
                       ))}
                     </select>
                   </label>
+                  <label>
+                    Schrift
+                    <select name="fontStyle" defaultValue="lucida">
+                      {fontOptions.map((font) => (
+                        <option value={font.value} key={font.value}>
+                          {font.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="font-preview-card font-lucida">Vorschau: Willkommen auf meinem .fish.</div>
                   <label className="check-label">
                     <input name="glitter" type="checkbox" defaultChecked />
                     Glitzer-Modus aktivieren
@@ -1660,6 +1727,7 @@ export default function WallsPage() {
                   {fishType === "text" && (
                     <form className="pin-form" onSubmit={pinText}>
                       {renderCollabSelect()}
+                      {renderPostOptions()}
                       <label>
                         Text-.fish
                         <textarea name="text" placeholder="Schreib etwas in deinen Feed" required />
@@ -1675,6 +1743,7 @@ export default function WallsPage() {
                   {fishType === "image" && (
                     <form className="pin-form" onSubmit={pinImage}>
                       {renderCollabSelect()}
+                      {renderPostOptions()}
                       <label>
                         Bild-.fish
                         <input name="image" type="file" accept="image/*" required />
@@ -1694,6 +1763,7 @@ export default function WallsPage() {
                   {fishType === "song" && (
                     <form className="pin-form" onSubmit={pinSong}>
                       {renderCollabSelect()}
+                      {renderPostOptions()}
                       <label>
                         Song-.fish
                         <select name="track" defaultValue="0">
@@ -1783,6 +1853,9 @@ export default function WallsPage() {
                         ))}
                       </select>
                     </label>
+                    <div className={`font-preview-card font-${editableProfile.fontStyle}`}>
+                      Vorschau: Dein Profil kann anders klingen, bevor man liest.
+                    </div>
                     <label>
                       Layout
                       <select name="layoutDensity" defaultValue={editableProfile.layoutDensity}>
@@ -1801,6 +1874,12 @@ export default function WallsPage() {
                       <label className="check-label">
                         <input name="verified" type="checkbox" defaultChecked={editableProfile.verified} />
                         Blauer Verifizierungshaken
+                      </label>
+                    )}
+                    {isAdmin && (
+                      <label>
+                        Neues Passwort setzen
+                        <input name="newPassword" type="password" placeholder="Leer lassen = unverändert" />
                       </label>
                     )}
                     <div className="modal-actions">

@@ -19,7 +19,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer className="global-contact-footer">
+          <span>Kontakt / Impressum</span>
+          <a href="mailto:management@kimon.fish">management@kimon.fish</a>
+        </footer>
+      </body>
     </html>
   );
 }

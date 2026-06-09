@@ -7,7 +7,8 @@ import {
   listWallFollows,
   listWallProfiles,
   SupabaseProfile,
-  updateWallProfile
+  updateWallProfile,
+  updateWallProfilePassword
 } from "@/lib/supabaseWalls";
 import { isAdmin } from "@/lib/auth";
 import { getWallSessionProfileId, hashPassword, setWallSession } from "@/lib/wallSession";
@@ -27,20 +28,35 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as (SupabaseProfile & { password?: string }) | null;
+  const handle = String(payload?.handle || "")
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const password = String(payload?.password || "").trim();
 
-  if (!payload?.name || !payload.handle || !payload.password) {
+  if (!payload?.name?.trim() || !handle || !password) {
     return NextResponse.json({ ok: false, message: "Name, Nutzername und Passwort sind Pflicht." }, { status: 400 });
   }
 
+  if (handle.length < 3) {
+    return NextResponse.json({ ok: false, message: "Der Nutzername muss mindestens 3 Zeichen haben." }, { status: 400 });
+  }
+
+  if (password.length < 4) {
+    return NextResponse.json({ ok: false, message: "Das Passwort muss mindestens 4 Zeichen haben." }, { status: 400 });
+  }
+
   try {
-    const existingProfile = await findWallProfileByHandle(payload.handle);
+    const existingProfile = await findWallProfileByHandle(handle);
 
     if (existingProfile) {
       return NextResponse.json({ ok: false, message: "Diesen Nutzernamen gibt es schon." }, { status: 409 });
     }
 
-    const { password, ...profile } = payload;
-    const createdProfile = await createWallProfile(profile, hashPassword(password));
+    const { password: _password, ...profile } = payload;
+    const createdProfile = await createWallProfile({ ...profile, handle, name: payload.name.trim() }, hashPassword(password));
     await setWallSession(createdProfile.id);
     return NextResponse.json({ ok: true, profile: createdProfile, message: "Feed erstellt." });
   } catch (error) {
@@ -63,10 +79,11 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const sessionProfileId = await getWallSessionProfileId();
   const admin = await isAdmin();
-  const payload = (await request.json().catch(() => ({}))) as Partial<SupabaseProfile> & { profileId?: string };
+  const payload = (await request.json().catch(() => ({}))) as Partial<SupabaseProfile> & { profileId?: string; password?: string };
   const targetProfileId = admin && payload.profileId ? payload.profileId : sessionProfileId;
   const profilePayload = { ...payload };
   delete profilePayload.profileId;
+  delete profilePayload.password;
 
   if (!targetProfileId) {
     return NextResponse.json({ ok: false, message: "Bitte erst einloggen." }, { status: 401 });
@@ -79,6 +96,10 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    if (admin && payload.password?.trim()) {
+      await updateWallProfilePassword(targetProfileId, hashPassword(payload.password.trim()));
+    }
+
     const profile = await updateWallProfile(targetProfileId, profilePayload);
     return NextResponse.json({ ok: true, profile, message: "Feed aktualisiert." });
   } catch (error) {
@@ -106,7 +127,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: "Nur Admins koennen Profile loeschen." }, { status: 403 });
   }
 
-  if (!profileId || profileId === "kimon") {
+  if (!profileId) {
     return NextResponse.json({ ok: false, message: "Dieses Profil kann nicht geloescht werden." }, { status: 400 });
   }
 

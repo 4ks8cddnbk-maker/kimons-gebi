@@ -30,7 +30,7 @@ export default function FishV2Gate() {
     if (!audio) return;
     audio.load();
     setTrackProgress(0);
-    if (pendingRadioStartRef.current || isPlaying) {
+    if (pendingRadioStartRef.current || radioStarted) {
       const shouldJumpIntoSong = pendingRadioStartRef.current;
       pendingRadioStartRef.current = false;
       playSelectedTrack(shouldJumpIntoSong);
@@ -73,7 +73,7 @@ export default function FishV2Gate() {
       audio
         .play()
         .then(() => {
-          setIsPlaying(true);
+          setIsPlaying(!audio.muted);
           setRadioStarted(true);
           setBeatPulse(0.82);
         })
@@ -111,9 +111,9 @@ export default function FishV2Gate() {
       return;
     }
 
-    audio.pause();
-    setIsPlaying(false);
-    setBeatPulse(0);
+    audio.muted = !audio.muted;
+    setIsPlaying(!audio.muted);
+    setBeatPulse(audio.muted ? 0 : 0.82);
   }
 
   function updateProgress() {
@@ -140,7 +140,7 @@ export default function FishV2Gate() {
         onTimeUpdate={updateProgress}
         onEnded={nextTrack}
         onPlay={() => {
-          setIsPlaying(true);
+          setIsPlaying(!audioRef.current?.muted);
           setRadioStarted(true);
           setBeatPulse(0.82);
         }}

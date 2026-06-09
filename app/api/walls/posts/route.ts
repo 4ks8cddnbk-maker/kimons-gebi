@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createWallPost, deleteWallPost, getWallPost, listWallFollows, listWallPosts } from "@/lib/supabaseWalls";
+import { isAdmin } from "@/lib/auth";
 import { getWallSessionProfileId } from "@/lib/wallSession";
 
 export async function GET() {
@@ -26,8 +27,12 @@ export async function POST(request: Request) {
     songTitle?: string;
     songArtist?: string;
     songSrc?: string;
+    authorId?: string;
+    createdAt?: string;
   };
-  const authorId = await getWallSessionProfileId();
+  const sessionAuthorId = await getWallSessionProfileId();
+  const admin = await isAdmin();
+  const authorId = admin && payload.authorId ? payload.authorId : sessionAuthorId;
 
   if (!authorId) {
     return NextResponse.json({ ok: false, message: "Bitte erst einloggen." }, { status: 401 });
@@ -35,6 +40,12 @@ export async function POST(request: Request) {
 
   if (!payload.targetId || !payload.text) {
     return NextResponse.json({ ok: false, message: ".fish ist unvollständig." }, { status: 400 });
+  }
+
+  const createdAtOverride = admin && payload.createdAt ? new Date(payload.createdAt) : null;
+
+  if (createdAtOverride && Number.isNaN(createdAtOverride.getTime())) {
+    return NextResponse.json({ ok: false, message: "Das Datum ist ungültig." }, { status: 400 });
   }
 
   try {
@@ -63,7 +74,8 @@ export async function POST(request: Request) {
       mediaUrl: payload.mediaUrl || "",
       songTitle: payload.songTitle || "",
       songArtist: payload.songArtist || "",
-      songSrc: payload.songSrc || ""
+      songSrc: payload.songSrc || "",
+      createdAt: createdAtOverride ? createdAtOverride.toISOString() : undefined
     });
     return NextResponse.json({ ok: true, post, message: "Im Feed gepostet." });
   } catch (error) {
@@ -85,9 +97,10 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const activeProfileId = await getWallSessionProfileId();
+  const admin = await isAdmin();
   const { postId } = await request.json().catch(() => ({ postId: "" }));
 
-  if (!activeProfileId) {
+  if (!activeProfileId && !admin) {
     return NextResponse.json({ ok: false, message: "Bitte erst einloggen." }, { status: 401 });
   }
 
@@ -102,7 +115,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ ok: false, message: ".fish wurde nicht gefunden." }, { status: 404 });
     }
 
-    if (post.authorId !== activeProfileId && post.targetId !== activeProfileId) {
+    if (!admin && post.authorId !== activeProfileId && post.targetId !== activeProfileId) {
       return NextResponse.json({ ok: false, message: "Du kannst nur .fishs aus deinem Feed loeschen." }, { status: 403 });
     }
 
