@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createWallPost, deleteWallPost, getWallPost, listWallPosts } from "@/lib/supabaseWalls";
+import { createWallPost, deleteWallPost, getWallPost, listWallFollows, listWallPosts } from "@/lib/supabaseWalls";
 import { getWallSessionProfileId } from "@/lib/wallSession";
 
 export async function GET() {
@@ -38,6 +38,20 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (payload.collaboratorId) {
+      const follows = await listWallFollows();
+      const followsCollaborator = follows.some(
+        (follow) => follow.followerId === authorId && follow.followingId === payload.collaboratorId
+      );
+      const collaboratorFollowsBack = follows.some(
+        (follow) => follow.followerId === payload.collaboratorId && follow.followingId === authorId
+      );
+
+      if (!followsCollaborator || !collaboratorFollowsBack) {
+        return NextResponse.json({ ok: false, message: "Collab-.fish geht nur mit Top-Freunden." }, { status: 403 });
+      }
+    }
+
     const post = await createWallPost({
       authorId,
       targetId: payload.targetId,

@@ -59,6 +59,15 @@ const tracks = [
   { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" }
 ];
 
+const reactionPrefix = "__reaction__:";
+const reactionOptions = [
+  { key: "thumbs-up", label: "Daumen hoch", icon: "👍" },
+  { key: "wow", label: "Erstaunt", icon: "!" },
+  { key: "heart-eyes", label: "Herzaugen", icon: "♥" },
+  { key: "laugh-cry", label: "Lacht", icon: "XD" },
+  { key: "hundred", label: "100!", icon: "100!" }
+];
+
 const themeOptions = [
   { value: "blue", label: "Aqua Blau", accent: "#66b9f1", background: "#dcecff" },
   { value: "green", label: "Limewire Gruen", accent: "#33b75a", background: "#dff7e5" },
@@ -123,6 +132,7 @@ export default function WallsPage() {
   const [followPulse, setFollowPulse] = useState(false);
   const [showOlderPosts, setShowOlderPosts] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationTab, setNotificationTab] = useState<"all" | "follows" | "comments" | "reactions" | "collabs">("all");
   const [seenNotifications, setSeenNotifications] = useState(0);
   const [highlightedPostId, setHighlightedPostId] = useState("");
   const [loginHandle, setLoginHandle] = useState("");
@@ -157,7 +167,13 @@ export default function WallsPage() {
     [activeProfile, posts]
   );
   const commentsByPost = useMemo(() => {
-    return comments.reduce<Record<string, WallComment[]>>((groups, comment) => {
+    return comments.filter((comment) => !comment.text.startsWith(reactionPrefix)).reduce<Record<string, WallComment[]>>((groups, comment) => {
+      groups[comment.postId] = [...(groups[comment.postId] || []), comment];
+      return groups;
+    }, {});
+  }, [comments]);
+  const reactionCommentsByPost = useMemo(() => {
+    return comments.filter((comment) => comment.text.startsWith(reactionPrefix)).reduce<Record<string, WallComment[]>>((groups, comment) => {
       groups[comment.postId] = [...(groups[comment.postId] || []), comment];
       return groups;
     }, {});
@@ -171,6 +187,7 @@ export default function WallsPage() {
         const follower = profiles.find((profile) => profile.id === follow.followerId);
         return {
           id: `follow-${follow.followerId}`,
+          category: "follows",
           text: `${follower?.name || "Jemand"} folgt dir jetzt.`,
           profileId: follow.followerId,
           postId: ""
@@ -182,6 +199,7 @@ export default function WallsPage() {
         const author = profiles.find((profile) => profile.id === post.authorId);
         return {
           id: `collab-${post.id}`,
+          category: "collabs",
           text: `${author?.name || "Jemand"} hat dich in einem .fish markiert.`,
           profileId: post.targetId || post.authorId,
           postId: post.id
@@ -190,21 +208,45 @@ export default function WallsPage() {
     const commentNotes = comments
       .filter((comment) => {
         const post = posts.find((item) => item.id === comment.postId);
-        return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id;
+        return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id && !comment.text.startsWith(reactionPrefix);
       })
       .slice(-8)
       .map((comment) => {
         const author = profiles.find((profile) => profile.id === comment.authorId);
+        const post = posts.find((item) => item.id === comment.postId);
         return {
           id: `comment-${comment.id}`,
+          category: "comments",
           text: `${author?.name || "Jemand"} hat dein .fish kommentiert.`,
-          profileId: comment.authorId,
+          profileId: post?.targetId || post?.authorId || comment.authorId,
+          postId: comment.postId
+        };
+      });
+    const reactionNotes = comments
+      .filter((comment) => {
+        const post = posts.find((item) => item.id === comment.postId);
+        return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id && comment.text.startsWith(reactionPrefix);
+      })
+      .slice(-8)
+      .map((comment) => {
+        const author = profiles.find((profile) => profile.id === comment.authorId);
+        const post = posts.find((item) => item.id === comment.postId);
+        const reaction = reactionOptions.find((option) => `${reactionPrefix}${option.key}` === comment.text);
+        return {
+          id: `reaction-${comment.id}`,
+          category: "reactions",
+          text: `${author?.name || "Jemand"} hat mit ${reaction?.label || "einer Reaktion"} reagiert.`,
+          profileId: post?.targetId || post?.authorId || comment.authorId,
           postId: comment.postId
         };
       });
 
-    return [...commentNotes, ...collabNotes, ...followNotes].slice(0, 10);
+    return [...reactionNotes, ...commentNotes, ...collabNotes, ...followNotes].slice(0, 14);
   }, [activeProfile, comments, follows, posts, profiles]);
+  const visibleNotifications = useMemo(() => {
+    if (notificationTab === "all") return notifications;
+    return notifications.filter((note) => note.category === notificationTab);
+  }, [notificationTab, notifications]);
   const mutualFriends = useMemo(() => {
     if (!viewProfile) return [];
 
@@ -222,6 +264,27 @@ export default function WallsPage() {
   const isFollowingViewProfile =
     Boolean(activeProfile && viewProfile) &&
     follows.some((follow) => follow.followerId === activeProfile?.id && follow.followingId === viewProfile?.id);
+  const activeMutualFriends = useMemo(() => {
+    if (!activeProfile) return [];
+
+    return profiles.filter((profile) => {
+      if (profile.id === activeProfile.id) return false;
+      const followsThem = follows.some(
+        (follow) => follow.followerId === activeProfile.id && follow.followingId === profile.id
+      );
+      const followsBack = follows.some(
+        (follow) => follow.followerId === profile.id && follow.followingId === activeProfile.id
+      );
+      return followsThem && followsBack;
+    });
+  }, [activeProfile, follows, profiles]);
+  const canCollabWithViewProfile =
+    Boolean(activeProfile && viewProfile) &&
+    (activeProfile?.id === viewProfile?.id ||
+      activeMutualFriends.some((profile) => profile.id === viewProfile?.id));
+  const hasCollabTarget =
+    Boolean(activeProfile && viewProfile) &&
+    (activeProfile?.id === viewProfile?.id ? activeMutualFriends.length > 0 : canCollabWithViewProfile);
   const visibleProfiles = useMemo(() => {
     const search = profileSearch.trim().toLowerCase();
     if (!search) return profiles;
@@ -255,6 +318,12 @@ export default function WallsPage() {
   useEffect(() => {
     setShowOlderPosts(false);
   }, [viewProfileId]);
+
+  useEffect(() => {
+    if (postMode === "collab" && !hasCollabTarget) {
+      setPostMode("pin");
+    }
+  }, [hasCollabTarget, postMode]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -508,6 +577,17 @@ export default function WallsPage() {
     if (!viewProfile || !activeProfile) return false;
 
     const isOtherProfile = viewProfile.id !== activeProfile.id;
+    const isAllowedCollab =
+      mode !== "collab" ||
+      (isOtherProfile
+        ? activeMutualFriends.some((profile) => profile.id === viewProfile.id)
+        : activeMutualFriends.some((profile) => profile.id === collaboratorId));
+
+    if (!isAllowedCollab) {
+      notify("Collab-.fish geht nur mit Top-Freunden.");
+      return false;
+    }
+
     const targetId = mode === "collab" ? activeProfile.id : viewProfile.id;
     const nextCollaboratorId =
       mode === "collab" ? collaboratorId || (isOtherProfile ? viewProfile.id : "") : "";
@@ -685,6 +765,23 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
+  async function reactToPost(postId: string, reaction: string) {
+    const response = await fetch("/api/walls/reactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId, reaction })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      notify(data.message || "Reaktion konnte nicht gespeichert werden.");
+      return;
+    }
+
+    notify(data.removed ? "Reaktion entfernt." : "Reaktion gespeichert.");
+    await loadWalls(false);
+  }
+
   async function deleteProfile() {
     if (!isAdmin || !viewProfile || viewProfile.id === "kimon") return;
     const ok = window.confirm(`${viewProfile.name} wirklich loeschen?`);
@@ -740,18 +837,19 @@ export default function WallsPage() {
   function renderCollabSelect() {
     if (!activeProfile || postMode !== "collab" || activeProfile.id !== viewProfile?.id) return null;
 
-    const possibleCollaborators = profiles.filter((profile) => profile.id !== activeProfile.id);
+    const possibleCollaborators = activeMutualFriends;
 
     return (
       <label>
         Collab mit
-        <select name="collaboratorId" defaultValue={possibleCollaborators[0]?.id || ""} required>
+        <select name="collaboratorId" defaultValue={possibleCollaborators[0]?.id || ""} required disabled={!possibleCollaborators.length}>
           {possibleCollaborators.map((profile) => (
             <option value={profile.id} key={profile.id}>
               {profile.name}
             </option>
           ))}
         </select>
+        {!possibleCollaborators.length && <small>Collabs gehen erst, wenn ihr gegenseitig folgt.</small>}
       </label>
     );
   }
@@ -793,6 +891,10 @@ export default function WallsPage() {
     setActiveTrack((currentTrack) => (currentTrack + 1) % tracks.length);
   }
 
+  function previousTrack() {
+    setActiveTrack((currentTrack) => (currentTrack + tracks.length - 1) % tracks.length);
+  }
+
   const wallStyle =
     viewProfile &&
     ({
@@ -828,9 +930,11 @@ export default function WallsPage() {
     const target = profiles.find((profile) => profile.id === post.targetId);
     const collaborator = profiles.find((profile) => profile.id === post.collaboratorId);
     const postComments = commentsByPost[post.id] || [];
+    const postReactions = reactionCommentsByPost[post.id] || [];
     const isOnOtherProfile = author && target && author.id !== target.id;
     const canDeletePost =
       Boolean(activeProfile) && (post.authorId === activeProfile?.id || post.targetId === activeProfile?.id);
+    const activeReaction = postReactions.find((reaction) => reaction.authorId === activeProfile?.id)?.text.replace(reactionPrefix, "");
 
     return (
       <article
@@ -874,6 +978,38 @@ export default function WallsPage() {
         )}
         <p>{post.text}</p>
         <span>{new Date(post.createdAt).toLocaleString("de-DE")}</span>
+
+        <div className="fish-reactions">
+          <div className="reaction-buttons">
+            {reactionOptions.map((reaction) => (
+              <button
+                className={activeReaction === reaction.key ? "active" : ""}
+                type="button"
+                key={reaction.key}
+                onClick={() => reactToPost(post.id, reaction.key)}
+                title={reaction.label}
+              >
+                <span>{reaction.icon}</span>
+                <small>{reaction.label}</small>
+              </button>
+            ))}
+          </div>
+          <div className="reaction-summary">
+            {reactionOptions.map((reaction) => {
+              const actors = postReactions
+                .filter((item) => item.text === `${reactionPrefix}${reaction.key}`)
+                .map((item) => profiles.find((profile) => profile.id === item.authorId)?.name || "Unbekannt");
+
+              if (!actors.length) return null;
+
+              return (
+                <p key={reaction.key}>
+                  <b>{reaction.icon}</b> {actors.join(", ")}
+                </p>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="fish-comments">
           {postComments.map((comment) => {
@@ -1063,7 +1199,7 @@ export default function WallsPage() {
                   {tracks[activeTrack].title} - {tracks[activeTrack].artist}
                 </span>
                 <div className="ipod-controls-mini">
-                  <button onClick={nextTrack}>◀</button>
+                  <button onClick={previousTrack}>◀</button>
                   <button className="mini-play" onClick={() => toggleMusic()}>
                     {isPlaying ? "Ⅱ" : "▶"}
                   </button>
@@ -1086,9 +1222,30 @@ export default function WallsPage() {
 
           {notificationsOpen && (
             <aside className="fish-notification-popover">
-              <strong>Benachrichtigungen</strong>
-              {notifications.length ? (
-                notifications.map((note) => (
+              <div className="notification-head">
+                <strong>Benachrichtigungen</strong>
+                <span>{notifications.length} neu</span>
+              </div>
+              <div className="notification-tabs">
+                {[
+                  ["all", "Alle"],
+                  ["follows", "Follows"],
+                  ["comments", "Kommentare"],
+                  ["reactions", "Reactions"],
+                  ["collabs", "Collabs"]
+                ].map(([key, label]) => (
+                  <button
+                    className={notificationTab === key ? "active" : ""}
+                    type="button"
+                    key={key}
+                    onClick={() => setNotificationTab(key as typeof notificationTab)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {visibleNotifications.length ? (
+                visibleNotifications.map((note) => (
                   <button type="button" key={note.id} onClick={() => openNotification(note)}>
                     {note.text}
                   </button>
@@ -1102,11 +1259,11 @@ export default function WallsPage() {
           <aside className={`fish-side-dock ${sideMenuOpen ? "open" : ""}`}>
             <p className="eyebrow">.fish Menu</p>
             <div className="wall-profile-list">
-              <button className="active" type="button">
+              <button className={!showFishPage && viewProfile.id === activeProfile.id ? "active" : ""} type="button" onClick={() => openProfile(activeProfile.id)}>
                 <span className="mini-avatar">
                   {activeProfile.avatar ? <img src={activeProfile.avatar} alt="" /> : activeProfile.name[0]}
                 </span>
-                <span>{activeProfile.name}</span>
+                <span>Mein .fish</span>
               </button>
             </div>
             <button className={`menu-nav-button ${showFishPage ? "active" : ""}`} type="button" onClick={openFishPage}>
@@ -1161,18 +1318,6 @@ export default function WallsPage() {
             <button className="secondary-button" type="button" onClick={logout}>
               Ausloggen
             </button>
-            <div className="fish-notifications">
-              <strong>Benachrichtigungen</strong>
-              {notifications.length ? (
-                notifications.map((note) => (
-                  <button type="button" key={note.id} onClick={() => openNotification(note)}>
-                    {note.text}
-                  </button>
-                ))
-              ) : (
-                <span>Noch nichts Neues.</span>
-              )}
-            </div>
           </aside>
 
           <section
@@ -1194,7 +1339,6 @@ export default function WallsPage() {
                   <div>
                     <p className="eyebrow">Neueste .fishs</p>
                     <h2>.fishpage</h2>
-                    <p>Hier siehst du die neuesten .fishs von allen anderen in zeitlicher Reihenfolge.</p>
                   </div>
                   <article className="wall-post party-news-post">
                     <div className="post-route">
@@ -1320,13 +1464,13 @@ export default function WallsPage() {
                 </div>
                 <div className="fish-modal-body">
                   <div className="fish-type-tabs">
-                    <button className={fishType === "text" ? "active" : ""} onClick={() => setFishType("text")}>
+                    <button className={fishType === "text" ? "active" : ""} type="button" onClick={() => setFishType("text")}>
                       Text
                     </button>
-                    <button className={fishType === "image" ? "active" : ""} onClick={() => setFishType("image")}>
+                    <button className={fishType === "image" ? "active" : ""} type="button" onClick={() => setFishType("image")}>
                       Bild
                     </button>
-                    <button className={fishType === "song" ? "active" : ""} onClick={() => setFishType("song")}>
+                    <button className={fishType === "song" ? "active" : ""} type="button" onClick={() => setFishType("song")}>
                       Song
                     </button>
                   </div>
@@ -1341,14 +1485,15 @@ export default function WallsPage() {
                     <button
                       className={postMode === "collab" ? "active" : ""}
                       type="button"
+                      disabled={!hasCollabTarget}
                       onClick={() => setPostMode("collab")}
                     >
                       Collab-.fish
                     </button>
                   </div>
                   <p className="fish-mode-help">
-                    Anpinnen heißt: du postest etwas auf dem geöffneten Profil. Collab heißt: es wird als gemeinsames
-                    .fish mit beiden Namen angezeigt.
+                    Anpinnen heißt: du postest etwas auf dem geöffneten Profil. Collab heißt: ein gemeinsames .fish mit
+                    Top-Freunden.
                   </p>
 
                   {fishType === "text" && (

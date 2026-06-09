@@ -381,6 +381,16 @@ export async function createWallComment(comment: Omit<SupabaseWallComment, "id" 
   return toComment(rows[0]);
 }
 
+export async function deleteWallReactionComments(postId: string, authorId: string) {
+  await supabaseRest(
+    `wall_comments?post_id=eq.${encodeURIComponent(postId)}&author_id=eq.${encodeURIComponent(authorId)}&text=like.${encodeURIComponent("__reaction__:%")}`,
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    }
+  );
+}
+
 export async function listWallFollows() {
   const response = await supabaseRest("wall_follows?select=*");
   const rows = (await response.json()) as FollowRow[];

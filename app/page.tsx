@@ -117,6 +117,7 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackProgress, setTrackProgress] = useState(0);
   const [beatPulse, setBeatPulse] = useState(0);
+  const [waveBars, setWaveBars] = useState(Array.from({ length: 14 }, () => 0.18));
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
   const [ipodMode, setIpodMode] = useState<"music" | "snake">("music");
   const [snake, setSnake] = useState(initialSnake);
@@ -133,6 +134,10 @@ export default function Home() {
   const [karaokeState, setKaraokeState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceConnectedRef = useRef(false);
+  const animationRef = useRef<number | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   useEffect(() => {
@@ -161,6 +166,10 @@ export default function Home() {
       audio.play().catch(() => setIsPlaying(false));
     }
   }, [activeTrack]);
+
+  useEffect(() => {
+    return () => stopReactiveLights();
+  }, []);
 
   useEffect(() => {
     if (ipodMode !== "snake" || !snakeRunning || snakeGameOver) return;
@@ -216,10 +225,17 @@ export default function Home() {
     if (!audio) return;
 
     if (audio.paused) {
-      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          startReactiveLights();
+        })
+        .catch(() => setIsPlaying(false));
     } else {
       audio.pause();
       setIsPlaying(false);
+      stopReactiveLights();
     }
   }
 
@@ -227,7 +243,76 @@ export default function Home() {
     const audio = audioRef.current;
     if (!audio || !audio.duration) return;
     setTrackProgress((audio.currentTime / audio.duration) * 100);
-    setBeatPulse(0.66 + Math.abs(Math.sin(audio.currentTime * 5.8)) * 0.34);
+  }
+
+  function startReactiveLights() {
+    const audio = audioRef.current;
+    if (!audio || typeof window === "undefined") return;
+
+    const AudioContextConstructor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      setBeatPulse(0.85);
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextConstructor();
+    }
+
+    const context = audioContextRef.current;
+
+    if (!analyserRef.current) {
+      analyserRef.current = context.createAnalyser();
+      analyserRef.current.fftSize = 128;
+      analyserRef.current.smoothingTimeConstant = 0.72;
+    }
+
+    if (!sourceConnectedRef.current) {
+      const source = context.createMediaElementSource(audio);
+      source.connect(analyserRef.current);
+      analyserRef.current.connect(context.destination);
+      sourceConnectedRef.current = true;
+    }
+
+    context.resume().catch(() => undefined);
+    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+
+    const animate = () => {
+      const analyser = analyserRef.current;
+      if (!analyser || audio.paused) return;
+
+      analyser.getByteFrequencyData(data);
+      const bass = data.slice(0, 12).reduce((sum, value) => sum + value, 0) / 12;
+      const sparkle = data.slice(18, 42).reduce((sum, value) => sum + value, 0) / 24;
+      const pulse = Math.min(1, Math.max(0.18, bass / 190 + sparkle / 520));
+      setBeatPulse(pulse);
+      setWaveBars((currentBars) =>
+        currentBars.map((_, index) => {
+          const start = Math.floor((index / currentBars.length) * data.length);
+          const end = Math.max(start + 2, Math.floor(((index + 1) / currentBars.length) * data.length));
+          const values = data.slice(start, end);
+          const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+          return Math.min(1, Math.max(0.12, average / 210));
+        })
+      );
+      animationRef.current = window.requestAnimationFrame(animate);
+    };
+
+    if (animationRef.current) window.cancelAnimationFrame(animationRef.current);
+    animationRef.current = window.requestAnimationFrame(animate);
+  }
+
+  function stopReactiveLights() {
+    if (animationRef.current) {
+      window.cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+
+    setBeatPulse(0);
+    setWaveBars(Array.from({ length: 14 }, () => 0.18));
   }
 
   function tiltIpod(event: MouseEvent<HTMLDivElement>) {
@@ -478,11 +563,11 @@ export default function Home() {
           onEnded={nextTrack}
           onPause={() => {
             setIsPlaying(false);
-            setBeatPulse(0);
+            stopReactiveLights();
           }}
           onPlay={() => {
             setIsPlaying(true);
-            setBeatPulse(0.85);
+            startReactiveLights();
           }}
         />
         <div
@@ -518,6 +603,11 @@ export default function Home() {
                 </ol>
                 <div className="progress">
                   <i style={{ width: `${trackProgress}%` }} />
+                </div>
+                <div className="sound-wave" aria-hidden="true">
+                  {waveBars.map((height, index) => (
+                    <span style={{ "--wave": height } as CSSProperties} key={index} />
+                  ))}
                 </div>
                 <p className="ipod-status">
                   {isPlaying ? "Spielt" : "Pause"} · {tracks[activeTrack].title}
