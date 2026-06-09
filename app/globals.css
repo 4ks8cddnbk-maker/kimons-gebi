@@ -2089,16 +2089,19 @@ footer {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px 10px;
-  width: min(258px, calc(100vw - 32px));
-  padding: 11px;
+  width: min(236px, calc(100vw - 32px));
+  padding: 10px 10px 12px;
   color: #213047;
   background:
-    radial-gradient(circle at 92% 10%, rgba(255, 110, 159, 0.18), transparent 28%),
-    radial-gradient(circle at 12% 90%, rgba(25, 198, 255, 0.22), transparent 32%),
-    linear-gradient(rgba(255, 255, 255, 0.86), rgba(222, 230, 241, 0.86));
+    radial-gradient(circle at 28% 10%, rgba(255, 255, 255, 0.92), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(194, 204, 219, 0.9) 45%, rgba(246, 249, 252, 0.9) 72%, rgba(161, 175, 195, 0.9));
   border: 1px solid #8f9db2;
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(23, 40, 68, 0.24), inset 0 1px 0 #fff;
+  border-radius: 22px;
+  box-shadow:
+    0 16px 36px rgba(23, 40, 68, 0.24),
+    inset 0 1px 0 #fff,
+    inset -9px -14px 22px rgba(0, 0, 0, 0.1),
+    inset 12px 10px 18px rgba(255, 255, 255, 0.48);
   backdrop-filter: blur(16px);
 }
 
@@ -2137,9 +2140,17 @@ footer {
 
 .wall-music-player span {
   grid-column: 1 / -1;
-  color: #536177;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: #26394f;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
+  background:
+    radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.58), transparent 26%),
+    linear-gradient(#e9f4ff, #a9c2df 60%, #8faacc);
+  border: 2px solid #222936;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.28);
 }
 
 .wall-music-player div {
@@ -2163,24 +2174,27 @@ footer {
 .ipod-controls-mini {
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   justify-self: center;
-  width: 148px;
-  height: 74px;
+  width: 132px;
+  height: 66px;
   padding: 8px;
-  background: radial-gradient(circle, #f9fbff 0 43%, #cfd8e5 44% 100%);
+  background:
+    radial-gradient(circle at 50% 50%, #f9fbff 0 28%, #d9e1eb 29% 52%, #f8fbff 53% 100%);
   border: 1px solid #9ba8b9;
   border-radius: 999px;
-  box-shadow: inset 0 2px 5px rgba(23, 40, 68, 0.14);
+  box-shadow:
+    inset 0 2px 6px rgba(255, 255, 255, 0.72),
+    inset 0 -6px 12px rgba(23, 40, 68, 0.12);
 }
 
 .wall-music-player .ipod-controls-mini button {
   display: grid;
   place-items: center;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
   padding: 0;
   color: #243247;
   background: linear-gradient(#fff, #dce4ef);
@@ -2188,10 +2202,10 @@ footer {
 }
 
 .wall-music-player .ipod-controls-mini .mini-play {
-  width: 46px;
-  min-width: 46px;
-  height: 46px;
-  min-height: 46px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
   color: #fff;
   background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
 }
@@ -3661,6 +3675,211 @@ footer {
   }
 }
 
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .fish-topbar {
+    min-height: 56px;
+    padding: 8px 10px;
+  }
+
+  .fish-topbar div {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .fish-orb-brand {
+    padding: 8px 13px;
+    font-size: 14px;
+  }
+
+  .fish-topbar-profile {
+    max-width: 52vw;
+    padding: 5px 9px 5px 5px;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fish-topbar-profile .mini-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .fish-dock-toggle {
+    top: 68px;
+    left: 10px;
+    min-height: 40px;
+    padding: 8px 13px 8px 36px;
+    font-size: 13px;
+  }
+
+  .fish-bell {
+    top: 68px;
+    right: 10px;
+    min-width: 50px;
+    min-height: 40px;
+  }
+
+  .fish-side-dock {
+    top: 116px;
+    left: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 132px);
+    overflow: auto;
+    padding: 13px;
+  }
+
+  .fish-notification-popover {
+    top: 116px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100vh - 132px);
+    overflow: auto;
+    padding: 12px;
+  }
+
+  .notification-tabs {
+    border-radius: 16px;
+  }
+
+  .notification-tabs button {
+    flex: 1 1 42%;
+  }
+
+  .wall-stage {
+    width: min(100% - 12px, 1160px);
+    padding-top: 68px;
+    padding-bottom: 122px;
+  }
+
+  .fishpage-body,
+  .profile-grid {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .fishpage-body h2 {
+    font-size: 38px;
+  }
+
+  .myspace-card,
+  .wall-box,
+  .profile-sidebar,
+  .wall-post {
+    border-radius: 12px;
+  }
+
+  .profile-sidebar {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: center;
+    padding: 12px;
+  }
+
+  .profile-avatar {
+    grid-row: span 3;
+    font-size: 42px;
+  }
+
+  .profile-sidebar h2 {
+    margin: 0;
+    font-size: 25px;
+  }
+
+  .profile-sidebar p {
+    margin: 0;
+  }
+
+  .profile-edit-button,
+  .follow-button {
+    grid-column: 1 / -1;
+  }
+
+  .feed-heading {
+    align-items: stretch;
+  }
+
+  .feed-heading .compact-button {
+    flex: 0 0 auto;
+  }
+
+  .wall-post {
+    padding: 46px 12px 13px;
+  }
+
+  .post-route {
+    gap: 6px;
+  }
+
+  .post-profile-chip {
+    max-width: 100%;
+  }
+
+  .post-image-frame {
+    padding: 9px;
+    border-radius: 14px;
+  }
+
+  .post-image {
+    max-height: 58vh;
+    border-width: 5px;
+  }
+
+  .reaction-buttons {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .reaction-buttons button {
+    justify-content: center;
+    min-height: 38px;
+    padding: 5px;
+  }
+
+  .reaction-buttons button small {
+    display: none;
+  }
+
+  .comment-form {
+    grid-template-columns: 1fr;
+  }
+
+  .fish-modal-backdrop {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .fish-modal {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    border-radius: 14px 14px 10px 10px;
+  }
+
+  .fish-modal-body {
+    padding: 14px;
+  }
+
+  .fish-mode-tabs,
+  .fish-type-tabs,
+  .profile-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .party-news-confetti {
+    opacity: 0.58;
+    transform: scale(0.78);
+    transform-origin: top right;
+  }
+}
+
 @media (max-width: 520px) {
   .walls-layout,
   .wall-stage,
@@ -3679,7 +3898,59 @@ footer {
   }
 
   .wall-music-player {
-    right: 7px;
-    bottom: 7px;
+    right: 8px;
+    bottom: 8px;
+    width: min(212px, calc(100vw - 16px));
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .wall-music-player span {
+    min-height: 34px;
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+
+  .ipod-controls-mini {
+    width: 118px;
+    height: 56px;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .wall-music-player .ipod-controls-mini button {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+    font-size: 11px;
+  }
+
+  .wall-music-player .ipod-controls-mini .mini-play {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  .wall-music-player.collapsed {
+    width: auto;
+    padding: 7px;
+  }
+
+  .player-collapse {
+    width: 25px;
+    min-height: 22px;
+  }
+
+  .fish-toast {
+    bottom: 10px;
+    width: calc(100vw - 20px);
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .wall-music-player:not(.collapsed) ~ .fish-toast {
+    bottom: 112px;
   }
 }

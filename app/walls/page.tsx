@@ -856,6 +856,7 @@ export default function WallsPage() {
 
   function openNotification(note: { profileId: string; postId: string }) {
     openProfile(note.profileId);
+    setNotificationsOpen(false);
     if (note.postId) {
       setHighlightedPostId(note.postId);
       window.setTimeout(() => {
@@ -1224,7 +1225,7 @@ export default function WallsPage() {
             <aside className="fish-notification-popover">
               <div className="notification-head">
                 <strong>Benachrichtigungen</strong>
-                <span>{notifications.length} neu</span>
+                <span>{visibleNotifications.length} Einträge</span>
               </div>
               <div className="notification-tabs">
                 {[
