@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SITE_COOKIE_NAME, SITE_COOKIE_VALUE } from "@/lib/siteAuth";
 
-const publicPaths = ["/fish-v2", "/api/site-login"];
+const publicPaths = ["/fish-v2", "/api/site-login", "/music"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

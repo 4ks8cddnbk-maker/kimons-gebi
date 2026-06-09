@@ -19,13 +19,18 @@ export default function FishV2Gate() {
   const [beatPulse, setBeatPulse] = useState(0);
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
   const audioRef = useRef<HTMLAudioElement>(null);
+  const pendingRadioStartRef = useRef(false);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.load();
     setTrackProgress(0);
-    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+    if (pendingRadioStartRef.current || isPlaying) {
+      const shouldJumpIntoSong = pendingRadioStartRef.current;
+      pendingRadioStartRef.current = false;
+      playSelectedTrack(shouldJumpIntoSong);
+    }
   }, [activeTrack]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
@@ -51,14 +56,20 @@ export default function FishV2Gate() {
   }
 
   function nextTrack() {
-    setActiveTrack((activeTrack + 1) % tracks.length);
+    const nextIndex =
+      tracks.length > 1 ? (activeTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0;
+    setActiveTrack(nextIndex);
   }
 
-  function togglePlayback() {
+  function playSelectedTrack(jumpIntoSong = false) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (audio.paused) {
+    const startAudio = () => {
+      if (jumpIntoSong && Number.isFinite(audio.duration) && audio.duration > 24) {
+        audio.currentTime = Math.floor(Math.random() * Math.max(1, audio.duration - 18));
+      }
+
       audio
         .play()
         .then(() => {
@@ -66,6 +77,36 @@ export default function FishV2Gate() {
           setBeatPulse(0.82);
         })
         .catch(() => setIsPlaying(false));
+    };
+
+    if (audio.readyState >= 1) {
+      startAudio();
+      return;
+    }
+
+    audio.addEventListener("loadedmetadata", startAudio, { once: true });
+    audio.load();
+  }
+
+  function startRadio() {
+    const randomTrack = Math.floor(Math.random() * tracks.length);
+    pendingRadioStartRef.current = true;
+
+    if (randomTrack === activeTrack) {
+      pendingRadioStartRef.current = false;
+      playSelectedTrack(true);
+      return;
+    }
+
+    setActiveTrack(randomTrack);
+  }
+
+  function togglePlayback() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      startRadio();
       return;
     }
 

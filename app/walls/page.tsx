@@ -1064,7 +1064,6 @@ export default function WallsPage() {
                 <span>
                   <ReactionIcon type={reaction.key} />
                 </span>
-                <small>{reaction.label}</small>
               </button>
             ))}
           </div>
