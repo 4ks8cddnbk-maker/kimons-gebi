@@ -772,6 +772,19 @@ export default function WallsPage() {
     );
   }
 
+  function renderProfileChip(profile?: Profile | null) {
+    return (
+      <button className="post-profile-chip" type="button" onClick={() => openProfile(profile?.id)}>
+        <span className="post-mini-avatar">
+          {profile?.avatar ? <img src={profile.avatar} alt="" /> : profile?.name?.[0] || "?"}
+        </span>
+        <span>
+          {profile?.name || "Unbekannt"} {renderVerified(profile)}
+        </span>
+      </button>
+    );
+  }
+
   function renderPost(post: WallPost) {
     const author = profiles.find((profile) => profile.id === post.authorId);
     const target = profiles.find((profile) => profile.id === post.targetId);
@@ -789,25 +802,18 @@ export default function WallsPage() {
         style={{ "--pin-color": post.color } as CSSProperties}
       >
         <div className="post-route">
-          <button type="button" onClick={() => openProfile(author?.id)}>
-            {author?.name || "Unbekannt"} {renderVerified(author)}
-          </button>
-          {isOnOtherProfile && (
-            <>
-              <span>auf</span>
-              <button type="button" onClick={() => openProfile(target?.id)}>
-                {target?.name || "Profil"} {renderVerified(target)}
-              </button>
-            </>
-          )}
-          {collaborator && (
+          {renderProfileChip(author)}
+          {collaborator ? (
             <>
               <span>mit</span>
-              <button type="button" onClick={() => openProfile(collaborator.id)}>
-                {collaborator.name} {renderVerified(collaborator)}
-              </button>
+              {renderProfileChip(collaborator)}
             </>
-          )}
+          ) : isOnOtherProfile ? (
+            <>
+              <span>an</span>
+              {renderProfileChip(target)}
+            </>
+          ) : null}
         </div>
         {canDeletePost && (
           <button className="delete-post-button" type="button" onClick={() => deletePost(post.id)}>
@@ -816,7 +822,9 @@ export default function WallsPage() {
         )}
         <strong>{post.sticker}</strong>
         {post.postType === "image" && post.mediaUrl && (
-          <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
+          <figure className="post-image-frame">
+            <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
+          </figure>
         )}
         {post.postType === "song" && (
           <div className="post-song">
@@ -1136,12 +1144,19 @@ export default function WallsPage() {
                   </div>
                   <article className="wall-post party-news-post">
                     <div className="post-route">
-                      <button type="button">Kimon {renderVerified(profiles.find((profile) => profile.id === "kimon"))}</button>
+                      {renderProfileChip(profiles.find((profile) => profile.id === "kimon"))}
                       <span>posted</span>
                     </div>
-                    <strong>Party Website</strong>
+                    <div className="pinned-ribbon">pinned</div>
+                    <strong>Kimons Party Website</strong>
+                    <div className="party-news-orbit" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
                     <p>
-                      Kimon's 23. Geburtstag: 27.06.2026, 19:00, Wendelinstraße 94. Dresscode schick, aber entspannt.
+                      Kimon's 23. Geburtstag ist hier angepinnt: 27.06.2026, 19:00, Wendelinstraße 94.
+                      Dresscode schick, aber entspannt.
                     </p>
                     <a className="secondary-button party-news-link" href="/party">
                       Party-Website öffnen
