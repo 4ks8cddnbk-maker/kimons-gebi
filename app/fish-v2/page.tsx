@@ -9,7 +9,9 @@ const tracks = [
   { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
   { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
   { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
-  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" }
+  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" },
+  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3" },
+  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3" }
 ];
 
 export default function FishV2Gate() {

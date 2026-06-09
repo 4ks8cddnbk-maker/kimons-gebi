@@ -51,6 +51,7 @@ type Profile = {
 type Follow = {
   followerId: string;
   followingId: string;
+  createdAt: string;
 };
 
 const tracks = [
@@ -59,7 +60,9 @@ const tracks = [
   { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
   { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
   { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
-  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" }
+  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" },
+  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3" },
+  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3" }
 ];
 
 const reactionPrefix = "__reaction__:";
@@ -87,10 +90,7 @@ const patternOptions = [
   { value: "scanlines", label: "CRT Lines" }
 ];
 const fontOptions = [
-  { value: "lucida", label: "Lucida Grande" },
-  { value: "georgia", label: "Georgia Blog" },
-  { value: "mono", label: "Terminal Mono" },
-  { value: "verdana", label: "Verdana Web" },
+  { value: "lucida", label: "Aqua Sans" },
   { value: "pixel", label: "Pixel Arcade" },
   { value: "script", label: "Glitzer Script" },
   { value: "bubble", label: "Bubble Pop" },
@@ -113,6 +113,34 @@ function normalizeHandle(handle: string) {
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function relativeTimeLabel(value: string) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "gerade eben";
+
+  const diff = Math.max(0, Date.now() - timestamp);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const month = 30 * day;
+
+  if (diff < minute) return "vor unter einer Minute";
+  if (diff < hour) {
+    const amount = Math.max(1, Math.floor(diff / minute));
+    return `vor ${amount} Minute${amount === 1 ? "" : "n"}`;
+  }
+  if (diff < day) {
+    const amount = Math.max(1, Math.floor(diff / hour));
+    return `vor ${amount} Stunde${amount === 1 ? "" : "n"}`;
+  }
+  if (diff < month) {
+    const amount = Math.max(1, Math.floor(diff / day));
+    return `vor ${amount} Tag${amount === 1 ? "" : "en"}`;
+  }
+
+  const amount = Math.max(1, Math.floor(diff / month));
+  return `vor ${amount} Monat${amount === 1 ? "" : "en"}`;
 }
 
 function ReactionIcon({ type }: { type: string }) {
@@ -212,6 +240,8 @@ export default function WallsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationTab, setNotificationTab] = useState<"all" | "follows" | "comments" | "reactions" | "collabs">("all");
   const [seenNotifications, setSeenNotifications] = useState(0);
+  const [highlightUnreadCount, setHighlightUnreadCount] = useState(0);
+  const [showOlderNotifications, setShowOlderNotifications] = useState(false);
   const [highlightedPostId, setHighlightedPostId] = useState("");
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -272,7 +302,8 @@ export default function WallsPage() {
           category: "follows",
           text: `${follower?.name || "Jemand"} folgt dir jetzt.`,
           profileId: follow.followerId,
-          postId: ""
+          postId: "",
+          createdAt: follow.createdAt
         };
       });
     const collabNotes = posts
@@ -284,7 +315,8 @@ export default function WallsPage() {
           category: "collabs",
           text: `${author?.name || "Jemand"} hat dich in einem .fish markiert.`,
           profileId: post.targetId || post.authorId,
-          postId: post.id
+          postId: post.id,
+          createdAt: post.createdAt
         };
       });
     const commentNotes = comments
@@ -292,7 +324,6 @@ export default function WallsPage() {
         const post = posts.find((item) => item.id === comment.postId);
         return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id && !comment.text.startsWith(reactionPrefix);
       })
-      .slice(-8)
       .map((comment) => {
         const author = profiles.find((profile) => profile.id === comment.authorId);
         const post = posts.find((item) => item.id === comment.postId);
@@ -301,7 +332,8 @@ export default function WallsPage() {
           category: "comments",
           text: `${author?.name || "Jemand"} hat dein .fish kommentiert.`,
           profileId: post?.targetId || post?.authorId || comment.authorId,
-          postId: comment.postId
+          postId: comment.postId,
+          createdAt: comment.createdAt
         };
       });
     const reactionNotes = comments
@@ -309,7 +341,6 @@ export default function WallsPage() {
         const post = posts.find((item) => item.id === comment.postId);
         return post?.authorId === activeProfile.id && comment.authorId !== activeProfile.id && comment.text.startsWith(reactionPrefix);
       })
-      .slice(-8)
       .map((comment) => {
         const author = profiles.find((profile) => profile.id === comment.authorId);
         const post = posts.find((item) => item.id === comment.postId);
@@ -319,16 +350,21 @@ export default function WallsPage() {
           category: "reactions",
           text: `${author?.name || "Jemand"} hat mit ${reaction?.label || "einer Reaktion"} reagiert.`,
           profileId: post?.targetId || post?.authorId || comment.authorId,
-          postId: comment.postId
+          postId: comment.postId,
+          createdAt: comment.createdAt
         };
       });
 
-    return [...reactionNotes, ...commentNotes, ...collabNotes, ...followNotes].slice(0, 14);
+    return [...reactionNotes, ...commentNotes, ...collabNotes, ...followNotes].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
   }, [activeProfile, comments, follows, posts, profiles]);
   const visibleNotifications = useMemo(() => {
     if (notificationTab === "all") return notifications;
     return notifications.filter((note) => note.category === notificationTab);
   }, [notificationTab, notifications]);
+  const displayedNotifications = showOlderNotifications ? visibleNotifications : visibleNotifications.slice(0, 5);
+  const olderNotificationCount = Math.max(0, visibleNotifications.length - 5);
   const mutualFriends = useMemo(() => {
     if (!viewProfile) return [];
 
@@ -813,7 +849,11 @@ export default function WallsPage() {
       return;
     }
 
-    const nextFollow = { followerId: activeProfile.id, followingId: viewProfile.id };
+    const nextFollow = data.follow || {
+      followerId: activeProfile.id,
+      followingId: viewProfile.id,
+      createdAt: new Date().toISOString()
+    };
     setFollows((currentFollows) =>
       isFollowingViewProfile
         ? currentFollows.filter(
@@ -1012,8 +1052,16 @@ export default function WallsPage() {
   }
 
   function toggleNotifications() {
-    setNotificationsOpen((value) => !value);
+    if (notificationsOpen) {
+      setNotificationsOpen(false);
+      setHighlightUnreadCount(0);
+      return;
+    }
+
+    setHighlightUnreadCount(Math.max(0, notifications.length - seenNotifications));
     setSeenNotifications(notifications.length);
+    setShowOlderNotifications(false);
+    setNotificationsOpen(true);
   }
 
   function playSelectedTrack(jumpIntoSong = false) {
@@ -1464,18 +1512,40 @@ export default function WallsPage() {
                     className={notificationTab === key ? "active" : ""}
                     type="button"
                     key={key}
-                    onClick={() => setNotificationTab(key as typeof notificationTab)}
+                    onClick={() => {
+                      setNotificationTab(key as typeof notificationTab);
+                      setShowOlderNotifications(false);
+                    }}
                   >
                     {label}
                   </button>
                 ))}
               </div>
               {visibleNotifications.length ? (
-                visibleNotifications.map((note) => (
-                  <button type="button" key={note.id} onClick={() => openNotification(note)}>
-                    {note.text}
-                  </button>
-                ))
+                <>
+                  {displayedNotifications.map((note, index) => (
+                    <button
+                      className={index < highlightUnreadCount ? "notification-unread" : ""}
+                      type="button"
+                      key={note.id}
+                      onClick={() => openNotification(note)}
+                    >
+                      <strong>{note.text}</strong>
+                      <small>{relativeTimeLabel(note.createdAt)}</small>
+                    </button>
+                  ))}
+                  {olderNotificationCount > 0 && (
+                    <button
+                      className="notification-more-button"
+                      type="button"
+                      onClick={() => setShowOlderNotifications((value) => !value)}
+                    >
+                      {showOlderNotifications
+                        ? "Ältere einklappen"
+                        : `${olderNotificationCount} ältere anzeigen`}
+                    </button>
+                  )}
+                </>
               ) : (
                 <span>Noch nichts Neues.</span>
               )}

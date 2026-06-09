@@ -39,6 +39,16 @@ const tracks = [
     title: "What Makes You Beautiful",
     artist: "One Direction",
     src: "/music/what-makes-you-beautiful.mp3"
+  },
+  {
+    title: "Beauty And A Beat",
+    artist: "Justin Bieber ft. Nicki Minaj",
+    src: "/music/beauty-and-a-beat.mp3"
+  },
+  {
+    title: "TiK ToK",
+    artist: "Ke$ha",
+    src: "/music/tik-tok.mp3"
   }
 ];
 

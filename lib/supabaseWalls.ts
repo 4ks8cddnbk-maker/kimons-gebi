@@ -46,6 +46,7 @@ export type SupabaseProfile = {
 export type SupabaseFollow = {
   followerId: string;
   followingId: string;
+  createdAt: string;
 };
 
 type ProfileRow = {
@@ -99,27 +100,6 @@ type CommentRow = {
   author_id: string;
   text: string;
   created_at: string;
-};
-
-export const defaultWallProfile: SupabaseProfile = {
-  id: "kimon",
-  name: "Kimon",
-  handle: "birthday-host",
-  avatar: "",
-  bio: "Host der 23. Geburtstagsnacht. Hier darf alles in den Feed, was später lustig ist.",
-  mood: "bereit fuer Karaoke",
-  song: "Moment - C4RL",
-  theme: "blue",
-  pattern: "aqua",
-  stickerPack: "party",
-  headline: "Willkommen auf Kimons .fish",
-  glitter: true,
-  backgroundColor: "#dcecff",
-  accentColor: "#66b9f1",
-  fontStyle: "lucida",
-  layoutDensity: "cozy",
-  verified: true,
-  photos: []
 };
 
 const rawSupabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -263,7 +243,9 @@ async function supabaseRest(path: string, init: RequestInit = {}) {
 export async function listWallProfiles() {
   const response = await supabaseRest("wall_profiles?select=*&order=created_at.asc");
   const rows = (await response.json()) as ProfileRow[];
-  return rows.map(toProfile);
+  return rows
+    .map(toProfile)
+    .filter((profile) => profile.id !== "kimon" && profile.handle !== "birthday-host");
 }
 
 export async function createWallProfile(profile: SupabaseProfile, passwordHash: string) {
@@ -406,7 +388,8 @@ export async function listWallFollows() {
   const rows = (await response.json()) as FollowRow[];
   return rows.map((row) => ({
     followerId: row.follower_id,
-    followingId: row.following_id
+    followingId: row.following_id,
+    createdAt: row.created_at || new Date(0).toISOString()
   }));
 }
 
@@ -420,7 +403,8 @@ export async function followWallProfile(followerId: string, followingId: string)
   const row = rows[0] || { follower_id: followerId, following_id: followingId };
   return {
     followerId: row.follower_id,
-    followingId: row.following_id
+    followingId: row.following_id,
+    createdAt: row.created_at || new Date().toISOString()
   };
 }
 
