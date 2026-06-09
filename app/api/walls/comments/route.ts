@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         message: isPolicyError
-          ? "Supabase blockiert Kommentare noch. Bitte die aktuelle supabase-walls-setup.sql ausfuehren."
+          ? "Supabase blockiert noch. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel und .env.local setzen oder die Supabase-Fix-SQL ausfuehren."
           : message || "Kommentar konnte nicht gespeichert werden."
       },
       { status: 500 }

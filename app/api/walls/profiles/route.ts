@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         message: isPolicyError
-          ? "Supabase blockiert .fish Profile noch. Bitte supabase-fish-sofort-fix.sql im Supabase SQL Editor ausfuehren."
+          ? "Supabase blockiert noch. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel und .env.local setzen oder die Supabase-Fix-SQL ausfuehren."
           : message || ".fish konnte nicht gespeichert werden."
       },
       { status: 500 }
@@ -90,7 +90,7 @@ export async function PATCH(request: Request) {
       {
         ok: false,
         message: isPolicyError
-          ? "Supabase blockiert .fish Profile noch. Bitte supabase-fish-sofort-fix.sql im Supabase SQL Editor ausfuehren."
+          ? "Supabase blockiert noch. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel und .env.local setzen oder die Supabase-Fix-SQL ausfuehren."
           : message || ".fish konnte nicht aktualisiert werden."
       },
       { status: 500 }

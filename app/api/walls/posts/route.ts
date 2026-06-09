@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         message: isPolicyError
-          ? "Supabase blockiert neue .fish noch. Bitte die aktuelle supabase-walls-setup.sql im Supabase SQL Editor ausfuehren."
+          ? "Supabase blockiert noch. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel und .env.local setzen oder die Supabase-Fix-SQL ausfuehren."
           : message || ".fish konnte nicht gespeichert werden."
       },
       { status: 500 }
