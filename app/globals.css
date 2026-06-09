@@ -189,6 +189,7 @@ textarea {
 
 .fish-orb-brand,
 .fish-home-profile,
+.fish-topbar-create,
 .fish-topbar-profile {
   display: inline-flex;
   align-items: center;
@@ -246,6 +247,17 @@ textarea {
 .fish-home-profile b {
   display: block;
   line-height: 1.05;
+}
+
+.fish-topbar-create {
+  min-height: 38px;
+  padding: 8px 14px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.78), transparent 28%),
+    linear-gradient(#89dcff, #2f82bd 48%, #236aa0);
+  border-color: rgba(20, 80, 137, 0.78);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
 
 .fish-home-profile small {
@@ -1245,9 +1257,11 @@ figcaption {
 }
 
 .radio-start-screen {
+  position: relative;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  min-height: 128px;
+  min-height: 148px;
   margin-top: 10px;
   padding: 15px;
   text-align: center;
@@ -1259,6 +1273,99 @@ figcaption {
   border: 1px solid rgba(42, 67, 98, 0.22);
   border-radius: 7px;
   box-shadow: inset 0 2px 8px rgba(20, 38, 61, 0.16);
+}
+
+.radio-start-screen.on-air {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.78), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(109, 208, 255, 0.38), transparent 26%),
+    repeating-linear-gradient(0deg, rgba(21, 79, 143, 0.07) 0 2px, transparent 2px 5px),
+    linear-gradient(#e6f5ff, #9ab9d9 62%, #6f91bb);
+}
+
+.radio-frequency {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 9px;
+  color: #fff;
+  background: linear-gradient(#69afea, #1f76b8);
+  border: 1px solid rgba(19, 72, 125, 0.32);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.radio-start-screen .radio-frequency span {
+  color: inherit;
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.radio-start-screen .radio-frequency small {
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 9px;
+  text-shadow: inherit;
+}
+
+.radio-dancers {
+  position: relative;
+  width: 94px;
+  height: 60px;
+  margin: 6px 0 2px;
+}
+
+.radio-dancers i,
+.radio-dancers b {
+  position: absolute;
+  bottom: 4px;
+  display: block;
+  width: 31px;
+  height: 49px;
+  background: #07101b;
+  border-radius: 16px 16px 11px 11px;
+  filter: drop-shadow(0 6px 7px rgba(20, 38, 61, 0.18));
+}
+
+.radio-dancers i {
+  left: 18px;
+  transform: rotate(-8deg);
+}
+
+.radio-dancers b {
+  right: 17px;
+  height: 53px;
+  border-radius: 20px 20px 12px 12px;
+  transform: rotate(11deg);
+}
+
+.radio-dancers i::before,
+.radio-dancers b::before {
+  content: "";
+  position: absolute;
+  top: -11px;
+  left: 7px;
+  width: 17px;
+  height: 17px;
+  background: #07101b;
+  border-radius: 999px;
+}
+
+.radio-dancers i::after,
+.radio-dancers b::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: -5px;
+  width: 42px;
+  height: 16px;
+  background: #07101b;
+  border-radius: 999px;
+  transform: rotate(-16deg);
 }
 
 .radio-start-screen strong {
@@ -1370,6 +1477,15 @@ figcaption {
 
 .wheel button:hover {
   color: #155f9f;
+}
+
+.wheel button:disabled {
+  color: #7a8494;
+  cursor: default;
+}
+
+.wheel button:disabled:hover {
+  color: #7a8494;
 }
 
 .wheel button:nth-child(1) {
@@ -2246,7 +2362,7 @@ footer {
   align-items: center;
   gap: 8px;
   justify-self: center;
-  width: 132px;
+  width: 76px;
   height: 66px;
   padding: 8px;
   background:
@@ -2327,6 +2443,7 @@ footer {
 .fish-bell:hover,
 .fish-orb-brand:hover,
 .fish-home-profile:hover,
+.fish-topbar-create:hover,
 .fish-topbar-profile:hover {
   transform: translateY(-2px);
   box-shadow:
@@ -2735,6 +2852,10 @@ footer {
   display: grid;
   gap: 18px;
   padding: clamp(16px, 3vw, 28px);
+}
+
+.fishpage-create-button {
+  justify-self: start;
 }
 
 .fishpage-body h2 {
@@ -3826,6 +3947,11 @@ footer {
   .fish-orb-brand {
     padding: 8px 13px;
     font-size: 14px;
+  }
+
+  .fish-topbar-create {
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .fish-home-profile,

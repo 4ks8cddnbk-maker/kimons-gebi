@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ posts });
   } catch (error) {
     return NextResponse.json(
-      { posts: [], message: error instanceof Error ? error.message : "Pins konnten nicht geladen werden." },
+      { posts: [], message: error instanceof Error ? error.message : "Feeds konnten nicht geladen werden." },
       { status: 500 }
     );
   }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   if (!payload.targetId || !payload.text) {
-    return NextResponse.json({ ok: false, message: "Pin ist unvollständig." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: ".fish ist unvollständig." }, { status: 400 });
   }
 
   try {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       songArtist: payload.songArtist || "",
       songSrc: payload.songSrc || ""
     });
-    return NextResponse.json({ ok: true, post, message: "An die Wand gepinnt." });
+    return NextResponse.json({ ok: true, post, message: "Im Feed gepostet." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const isPolicyError =
@@ -103,7 +103,7 @@ export async function DELETE(request: Request) {
     }
 
     if (post.authorId !== activeProfileId && post.targetId !== activeProfileId) {
-      return NextResponse.json({ ok: false, message: "Du kannst nur .fishs von deiner Pinnwand loeschen." }, { status: 403 });
+      return NextResponse.json({ ok: false, message: "Du kannst nur .fishs aus deinem Feed loeschen." }, { status: 403 });
     }
 
     await deleteWallPost(postId);

@@ -556,7 +556,7 @@ export default function WallsPage() {
       name,
       handle,
       avatar,
-      bio: String(formData.get("bio") || "Noch keine Bio, aber bestimmt eine starke Pinnwand."),
+      bio: String(formData.get("bio") || "Noch keine Bio, aber bestimmt ein starker Feed."),
       mood: String(formData.get("mood") || "online"),
       song: String(formData.get("song") || "Karaoke Song offen"),
       theme: selectedTheme.value,
@@ -662,7 +662,7 @@ export default function WallsPage() {
       return false;
     }
 
-    const targetId = mode === "collab" ? activeProfile.id : viewProfile.id;
+    const targetId = activeProfile.id;
     const nextCollaboratorId =
       mode === "collab" ? collaboratorId || (isOtherProfile ? viewProfile.id : "") : "";
 
@@ -840,6 +840,13 @@ export default function WallsPage() {
   }
 
   async function reactToPost(postId: string, reaction: string) {
+    const post = posts.find((item) => item.id === postId);
+
+    if (post?.authorId === activeProfile?.id) {
+      notify("Auf eigene .fishs kannst du nicht reagieren.");
+      return;
+    }
+
     const response = await fetch("/api/walls/reactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -908,6 +915,14 @@ export default function WallsPage() {
     setSideMenuOpen(false);
   }
 
+  function openCreateFishFromFishPage() {
+    if (activeProfile) {
+      setViewProfileId(activeProfile.id);
+    }
+    setPostMode("pin");
+    setNewFishOpen(true);
+  }
+
   function renderCollabSelect() {
     if (!activeProfile || postMode !== "collab" || activeProfile.id !== viewProfile?.id) return null;
 
@@ -963,11 +978,9 @@ export default function WallsPage() {
   }
 
   function nextTrack() {
-    setActiveTrack((currentTrack) => (currentTrack + 1) % tracks.length);
-  }
-
-  function previousTrack() {
-    setActiveTrack((currentTrack) => (currentTrack + tracks.length - 1) % tracks.length);
+    setActiveTrack((currentTrack) =>
+      tracks.length > 1 ? (currentTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0
+    );
   }
 
   const wallStyle =
@@ -1010,6 +1023,7 @@ export default function WallsPage() {
     const canDeletePost =
       Boolean(activeProfile) && (post.authorId === activeProfile?.id || post.targetId === activeProfile?.id);
     const activeReaction = postReactions.find((reaction) => reaction.authorId === activeProfile?.id)?.text.replace(reactionPrefix, "");
+    const canReact = Boolean(activeProfile && post.authorId !== activeProfile.id);
 
     return (
       <article
@@ -1057,21 +1071,23 @@ export default function WallsPage() {
         <span>{new Date(post.createdAt).toLocaleString("de-DE")}</span>
 
         <div className="fish-reactions">
-          <div className="reaction-buttons">
-            {reactionOptions.map((reaction) => (
-              <button
-                className={activeReaction === reaction.key ? "active" : ""}
-                type="button"
-                key={reaction.key}
-                onClick={() => reactToPost(post.id, reaction.key)}
-                title={reaction.label}
-              >
-                <span>
-                  <ReactionIcon type={reaction.key} />
-                </span>
-              </button>
-            ))}
-          </div>
+          {canReact && (
+            <div className="reaction-buttons">
+              {reactionOptions.map((reaction) => (
+                <button
+                  className={activeReaction === reaction.key ? "active" : ""}
+                  type="button"
+                  key={reaction.key}
+                  onClick={() => reactToPost(post.id, reaction.key)}
+                  title={reaction.label}
+                >
+                  <span>
+                    <ReactionIcon type={reaction.key} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="reaction-summary">
             {reactionOptions.map((reaction) => {
               const actors = postReactions
@@ -1138,6 +1154,11 @@ export default function WallsPage() {
               </span>
             </button>
           )}
+          {activeProfile && (
+            <button className="fish-topbar-create" type="button" onClick={openCreateFishFromFishPage}>
+              + .fish erstellen
+            </button>
+          )}
         </div>
       </nav>
 
@@ -1152,7 +1173,7 @@ export default function WallsPage() {
             <p className="eyebrow">.fish</p>
             <h1>.fish</h1>
             <p className="hero-copy">
-              Retro-Profile, Fotos, Pins, Playlist-Songs und echte gegenseitige Freundschaften. Erst einloggen oder
+              Retro-Profile, Fotos, Playlist-Songs und echte gegenseitige Freundschaften. Erst einloggen oder
               registrieren, dann öffnet sich dein Bereich.
             </p>
           </div>
@@ -1283,11 +1304,9 @@ export default function WallsPage() {
                   {tracks[activeTrack].title} - {tracks[activeTrack].artist}
                 </span>
                 <div className="ipod-controls-mini">
-                  <button onClick={previousTrack}>◀</button>
                   <button className="mini-play" onClick={() => toggleMusic()}>
                     {isPlaying ? "Ⅱ" : "▶"}
                   </button>
-                  <button onClick={nextTrack}>▶</button>
                 </div>
               </>
             )}
@@ -1424,6 +1443,9 @@ export default function WallsPage() {
                     <p className="eyebrow">Neueste .fishs</p>
                     <h2>.fishpage</h2>
                   </div>
+                  <button className="aqua-button fishpage-create-button" type="button" onClick={openCreateFishFromFishPage}>
+                    .fish erstellen
+                  </button>
                   <article className="wall-post party-news-post">
                     <div className="post-route">
                       {renderProfileChip(profiles.find((profile) => profile.id === "kimon"))}
@@ -1445,7 +1467,7 @@ export default function WallsPage() {
                       <i />
                     </div>
                     <p>
-                      Kimon's 23. Geburtstag ist hier angepinnt: 27.06.2026, 19:00, Wendelinstraße 94.
+                      Kimon's 23. Geburtstag steht hier fest im Feed: 27.06.2026, 19:00, Wendelinstraße 94.
                       Dresscode schick, aber entspannt.
                     </p>
                     <a className="secondary-button party-news-link" href="/party">
@@ -1522,7 +1544,7 @@ export default function WallsPage() {
                       {visibleWallPosts.length ? (
                         visibleWallPosts.map((post) => renderPost(post))
                       ) : (
-                        <p>Noch nichts angepinnt. Sei die erste Person.</p>
+                        <p>Noch nichts im Feed. Sei die erste Person.</p>
                       )}
                       {olderPostCount > 0 && (
                         <button className="older-posts-toggle" type="button" onClick={() => setShowOlderPosts((value) => !value)}>
@@ -1564,7 +1586,7 @@ export default function WallsPage() {
                       type="button"
                       onClick={() => setPostMode("pin")}
                     >
-                      Bei Profil anpinnen
+                      Eigener Feed
                     </button>
                     <button
                       className={postMode === "collab" ? "active" : ""}
@@ -1576,8 +1598,7 @@ export default function WallsPage() {
                     </button>
                   </div>
                   <p className="fish-mode-help">
-                    Anpinnen heißt: du postest etwas auf dem geöffneten Profil. Collab heißt: ein gemeinsames .fish mit
-                    Top-Freunden.
+                    Eigener Feed heißt: du postest auf deinem Profil. Collab heißt: ein gemeinsames .fish mit Top-Freunden.
                   </p>
 
                   {fishType === "text" && (
@@ -1585,7 +1606,7 @@ export default function WallsPage() {
                       {renderCollabSelect()}
                       <label>
                         Text-.fish
-                        <textarea name="text" placeholder={`Schreib etwas in ${viewProfile.name}s Feed`} required />
+                        <textarea name="text" placeholder="Schreib etwas in deinen Feed" required />
                       </label>
                       <label>
                         Farbe

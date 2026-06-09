@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createWallComment, deleteWallReactionComments, listWallComments } from "@/lib/supabaseWalls";
+import { createWallComment, deleteWallReactionComments, getWallPost, listWallComments } from "@/lib/supabaseWalls";
 import { getWallSessionProfileId } from "@/lib/wallSession";
 
 const reactionPrefix = "__reaction__:";
@@ -18,6 +18,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    const post = await getWallPost(postId);
+
+    if (!post) {
+      return NextResponse.json({ ok: false, message: ".fish wurde nicht gefunden." }, { status: 404 });
+    }
+
+    if (post.authorId === authorId) {
+      return NextResponse.json({ ok: false, message: "Du kannst nicht auf deinen eigenen .fish reagieren." }, { status: 403 });
+    }
+
     const comments = await listWallComments();
     const currentReaction = comments.find(
       (comment) => comment.postId === postId && comment.authorId === authorId && comment.text.startsWith(reactionPrefix)

@@ -55,10 +55,6 @@ export default function FishV2Gate() {
     window.location.href = "/walls";
   }
 
-  function previousTrack() {
-    setActiveTrack((activeTrack + tracks.length - 1) % tracks.length);
-  }
-
   function nextTrack() {
     const nextIndex =
       tracks.length > 1 ? (activeTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0;
@@ -203,29 +199,19 @@ export default function FishV2Gate() {
             </div>
             <small>{radioStarted ? "103.7 .fish FM" : "103.7 .fish FM bereit"}</small>
             <div>
-              {!radioStarted ? (
-                <div className="radio-start-screen">
-                  <strong>START RADIO</strong>
-                  <span>shuffle broadcast</span>
-                  <small>press play</small>
+              <div className={`radio-start-screen ${radioStarted ? "on-air" : ""}`}>
+                <div className="radio-frequency">
+                  <span>103.7</span>
+                  <small>.fish FM</small>
                 </div>
-              ) : (
-                <ol className="ipod-list">
-                  {tracks.map((track, index) => (
-                    <li className={index === activeTrack ? "active" : ""} key={track.src}>
-                      <button
-                        onClick={() => {
-                          setRadioStarted(true);
-                          setActiveTrack(index);
-                        }}
-                      >
-                        <span>{track.title}</span>
-                        <small>{track.artist}</small>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              )}
+                <div className="radio-dancers" aria-hidden="true">
+                  <i />
+                  <b />
+                </div>
+                <strong>{radioStarted ? "ON AIR" : "START RADIO"}</strong>
+                <span>{radioStarted ? tracks[activeTrack].artist : "shuffle broadcast"}</span>
+                <small>{radioStarted ? tracks[activeTrack].title : "press play"}</small>
+              </div>
               <div className="progress">
                 <i style={{ width: `${trackProgress}%` }} />
               </div>
@@ -238,10 +224,10 @@ export default function FishV2Gate() {
             <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
               MENU
             </button>
-            <button type="button" onClick={nextTrack}>▶▶</button>
-            <button type="button" onClick={previousTrack}>◀◀</button>
+            <button type="button" disabled aria-hidden="true">FM</button>
+            <button type="button" disabled aria-hidden="true">103.7</button>
             <button className="play-label" type="button" onClick={togglePlayback}>
-              {isPlaying ? "PAUSE" : "PLAY"}
+              {isPlaying ? "OFF" : "ON"}
             </button>
             <button className="center" type="button" onClick={togglePlayback}>
               {isPlaying ? "Ⅱ" : "▶"}

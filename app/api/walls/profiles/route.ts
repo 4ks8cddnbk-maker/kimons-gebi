@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ profiles, follows, activeProfileId });
   } catch (error) {
     return NextResponse.json(
-      { profiles: [], message: error instanceof Error ? error.message : "Pinnwände konnten nicht geladen werden." },
+      { profiles: [], message: error instanceof Error ? error.message : "Feeds konnten nicht geladen werden." },
       { status: 500 }
     );
   }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const { password, ...profile } = payload;
     const createdProfile = await createWallProfile(profile, hashPassword(password));
     await setWallSession(createdProfile.id);
-    return NextResponse.json({ ok: true, profile: createdProfile, message: "Pinnwand erstellt." });
+    return NextResponse.json({ ok: true, profile: createdProfile, message: "Feed erstellt." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const isPolicyError =
@@ -80,7 +80,7 @@ export async function PATCH(request: Request) {
 
   try {
     const profile = await updateWallProfile(targetProfileId, profilePayload);
-    return NextResponse.json({ ok: true, profile, message: "Pinnwand aktualisiert." });
+    return NextResponse.json({ ok: true, profile, message: "Feed aktualisiert." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const isPolicyError =

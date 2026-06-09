@@ -106,7 +106,7 @@ export const defaultWallProfile: SupabaseProfile = {
   name: "Kimon",
   handle: "birthday-host",
   avatar: "",
-  bio: "Host der 23. Geburtstagsnacht. Hier darf alles angepinnt werden, was später lustig ist.",
+  bio: "Host der 23. Geburtstagsnacht. Hier darf alles in den Feed, was später lustig ist.",
   mood: "bereit fuer Karaoke",
   song: "Moment - C4RL",
   theme: "blue",
@@ -122,7 +122,11 @@ export const defaultWallProfile: SupabaseProfile = {
   photos: []
 };
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const rawSupabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseUrl = rawSupabaseUrl
+  .trim()
+  .replace(/\/rest\/v1\/?$/i, "")
+  .replace(/\/$/g, "");
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
@@ -152,7 +156,7 @@ function toProfile(row: ProfileRow): SupabaseProfile {
     theme: row.theme,
     pattern: row.pattern || "aqua",
     stickerPack: row.sticker_pack || "party",
-    headline: row.headline || "Meine Pinnwand",
+    headline: row.headline || "Mein Feed",
     glitter: Boolean(row.glitter),
     backgroundColor: row.background_color || "#dcecff",
     accentColor: row.accent_color || "#66b9f1",
