@@ -130,6 +130,7 @@ export default function WallsPage() {
   const [showFishPage, setShowFishPage] = useState(true);
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [followPulse, setFollowPulse] = useState(false);
+  const [showOlderPosts, setShowOlderPosts] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [seenNotifications, setSeenNotifications] = useState(0);
   const [highlightedPostId, setHighlightedPostId] = useState("");
@@ -154,6 +155,8 @@ export default function WallsPage() {
         : [],
     [posts, viewProfile]
   );
+  const visibleWallPosts = showOlderPosts ? wallPosts : wallPosts.slice(0, 5);
+  const olderPostCount = Math.max(0, wallPosts.length - 5);
   const fishPagePosts = useMemo(
     () =>
       posts
@@ -257,6 +260,10 @@ export default function WallsPage() {
 
     return () => window.clearInterval(interval);
   }, [activeProfileId]);
+
+  useEffect(() => {
+    setShowOlderPosts(false);
+  }, [viewProfileId]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -688,6 +695,23 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
+  async function deletePost(postId: string) {
+    const response = await fetch("/api/walls/posts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      notify(data.message || ".fish konnte nicht geloescht werden.");
+      return;
+    }
+
+    notify(".fish geloescht.");
+    await loadWalls(false);
+  }
+
   function openProfile(profileId?: string) {
     if (!profileId) return;
     setViewProfileId(profileId);
@@ -754,6 +778,8 @@ export default function WallsPage() {
     const collaborator = profiles.find((profile) => profile.id === post.collaboratorId);
     const postComments = commentsByPost[post.id] || [];
     const isOnOtherProfile = author && target && author.id !== target.id;
+    const canDeletePost =
+      Boolean(activeProfile) && (post.authorId === activeProfile?.id || post.targetId === activeProfile?.id);
 
     return (
       <article
@@ -783,6 +809,11 @@ export default function WallsPage() {
             </>
           )}
         </div>
+        {canDeletePost && (
+          <button className="delete-post-button" type="button" onClick={() => deletePost(post.id)}>
+            .fish loeschen
+          </button>
+        )}
         <strong>{post.sticker}</strong>
         {post.postType === "image" && post.mediaUrl && (
           <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
@@ -830,7 +861,6 @@ export default function WallsPage() {
       />
       <nav className="topbar" aria-label=".fish Navigation">
         <div>
-          <a href="/">Zur Partyseite</a>
           {activeProfile && <a href="#wall">.fish</a>}
         </div>
       </nav>
@@ -1184,10 +1214,15 @@ export default function WallsPage() {
                       </button>
                     </div>
                     <div className="wall-posts">
-                      {wallPosts.length ? (
-                        wallPosts.map((post) => renderPost(post))
+                      {visibleWallPosts.length ? (
+                        visibleWallPosts.map((post) => renderPost(post))
                       ) : (
                         <p>Noch nichts angepinnt. Sei die erste Person.</p>
+                      )}
+                      {olderPostCount > 0 && (
+                        <button className="older-posts-toggle" type="button" onClick={() => setShowOlderPosts((value) => !value)}>
+                          {showOlderPosts ? "Ältere .fishs einklappen" : `${olderPostCount} ältere .fishs anzeigen`}
+                        </button>
                       )}
                     </div>
                   </section>

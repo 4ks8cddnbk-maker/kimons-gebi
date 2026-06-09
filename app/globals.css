@@ -2262,11 +2262,16 @@ footer {
   position: relative;
   overflow: hidden;
   background:
+    linear-gradient(rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.18) 42%, rgba(192, 210, 232, 0.22)),
     radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--wall-a), transparent 72%), transparent 26%),
     linear-gradient(#f9fbff, var(--wall-b));
   border: 1px solid #8f9db2;
-  border-radius: 8px;
-  box-shadow: var(--shadow), inset 0 1px 0 #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 26px 70px rgba(23, 40, 68, 0.2),
+    0 2px 0 rgba(255, 255, 255, 0.58) inset,
+    inset 0 1px 0 #fff;
+  backdrop-filter: blur(12px);
 }
 
 .fishpage-card {
@@ -2383,10 +2388,15 @@ footer {
 
 .profile-sidebar,
 .wall-box {
-  background: rgba(255, 255, 255, 0.66);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.76), rgba(245, 249, 255, 0.54)),
+    radial-gradient(circle at 90% 12%, color-mix(in srgb, var(--wall-a), transparent 82%), transparent 30%);
   border: 1px solid rgba(126, 143, 166, 0.58);
-  border-radius: 8px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 10px 22px rgba(23, 40, 68, 0.08);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 14px 30px rgba(23, 40, 68, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .profile-sidebar {
@@ -2562,29 +2572,51 @@ footer {
 
 .wall-posts {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .wall-post {
   position: relative;
   isolation: isolate;
-  margin-top: 8px;
-  padding: 20px 20px 16px;
+  overflow: hidden;
+  margin-top: 0;
+  padding: 52px 18px 16px;
+  color: #1d293b;
   background:
-    linear-gradient(color-mix(in srgb, var(--pin-color, #fff), white 46%), color-mix(in srgb, var(--pin-color, #fff), #dbe4f0 34%)),
-    repeating-linear-gradient(0deg, rgba(101, 183, 242, 0.1) 0 1px, transparent 1px 22px);
-  border: 1px solid rgba(126, 143, 166, 0.58);
-  border-radius: 13px;
-  box-shadow: 0 14px 30px rgba(23, 40, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    linear-gradient(rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.28) 34%, rgba(225, 236, 248, 0.5)),
+    linear-gradient(color-mix(in srgb, var(--pin-color, #fff), white 58%), color-mix(in srgb, var(--pin-color, #fff), #dbe4f0 42%));
+  border: 1px solid rgba(103, 119, 142, 0.68);
+  border-radius: 14px;
+  box-shadow:
+    0 18px 42px rgba(23, 40, 68, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(70, 89, 118, 0.08);
 }
 
 .wall-post::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
+  height: 34px;
   pointer-events: none;
-  background: linear-gradient(rgba(255, 255, 255, 0.64), transparent 36%);
-  border-radius: inherit;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.12) 48%, rgba(97, 116, 143, 0.2) 49%, rgba(255, 255, 255, 0.32)),
+    linear-gradient(90deg, color-mix(in srgb, var(--pin-color, #fff), #64c7ff 28%), #e9f1fb);
+  border-bottom: 1px solid rgba(103, 119, 142, 0.42);
+}
+
+.wall-post::after {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: 14px;
+  width: 11px;
+  height: 11px;
+  background: #ff5f57;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 999px;
+  box-shadow: 18px 0 0 #ffbd2e, 36px 0 0 #28c840;
+  z-index: 1;
 }
 
 .wall-post.highlighted {
@@ -2598,20 +2630,23 @@ footer {
   padding: 5px 9px;
   color: #fff;
   font-size: 12px;
-  background: linear-gradient(var(--wall-a), #24466f);
+  background: linear-gradient(color-mix(in srgb, var(--wall-a), #2f82bd 30%), #24466f);
   border-radius: 999px;
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
 }
 
 .post-image {
+  display: block;
   width: 100%;
-  max-height: 420px;
+  max-width: 100%;
+  max-height: min(420px, 58vh);
   margin: 8px 0 12px;
-  object-fit: cover;
+  object-fit: contain;
   background: #fff;
   border: 6px solid #fff;
-  border-radius: 5px;
+  border-radius: 9px;
   box-shadow: 0 10px 22px rgba(23, 40, 68, 0.16);
+  box-sizing: border-box;
 }
 
 .post-song {
@@ -2733,6 +2768,35 @@ footer {
   background: rgba(255, 255, 255, 0.54);
   border: 1px solid rgba(174, 185, 200, 0.58);
   border-radius: 7px;
+}
+
+.delete-post-button {
+  position: absolute;
+  top: 7px;
+  right: 10px;
+  z-index: 2;
+  min-height: 22px;
+  padding: 3px 8px;
+  color: #5f1f1d;
+  font-size: 11px;
+  font-weight: 950;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(150, 33, 30, 0.24);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.older-posts-toggle {
+  min-height: 42px;
+  color: #213047;
+  font-weight: 950;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.82), rgba(223, 233, 246, 0.68)),
+    radial-gradient(circle at 20% 15%, rgba(102, 185, 241, 0.28), transparent 34%);
+  border: 1px solid rgba(143, 157, 178, 0.82);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 #fff, 0 10px 24px rgba(23, 40, 68, 0.12);
+  cursor: pointer;
 }
 
 .comment-form {

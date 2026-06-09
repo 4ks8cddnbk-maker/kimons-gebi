@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createWallPost, listWallPosts } from "@/lib/supabaseWalls";
+import { createWallPost, deleteWallPost, getWallPost, listWallPosts } from "@/lib/supabaseWalls";
 import { getWallSessionProfileId } from "@/lib/wallSession";
 
 export async function GET() {
@@ -64,6 +64,39 @@ export async function POST(request: Request) {
           ? "Supabase blockiert noch. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel und .env.local setzen oder die Supabase-Fix-SQL ausfuehren."
           : message || ".fish konnte nicht gespeichert werden."
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const activeProfileId = await getWallSessionProfileId();
+  const { postId } = await request.json().catch(() => ({ postId: "" }));
+
+  if (!activeProfileId) {
+    return NextResponse.json({ ok: false, message: "Bitte erst einloggen." }, { status: 401 });
+  }
+
+  if (!postId) {
+    return NextResponse.json({ ok: false, message: ".fish fehlt." }, { status: 400 });
+  }
+
+  try {
+    const post = await getWallPost(postId);
+
+    if (!post) {
+      return NextResponse.json({ ok: false, message: ".fish wurde nicht gefunden." }, { status: 404 });
+    }
+
+    if (post.authorId !== activeProfileId && post.targetId !== activeProfileId) {
+      return NextResponse.json({ ok: false, message: "Du kannst nur .fishs von deiner Pinnwand loeschen." }, { status: 403 });
+    }
+
+    await deleteWallPost(postId);
+    return NextResponse.json({ ok: true, message: ".fish geloescht." });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error instanceof Error ? error.message : ".fish konnte nicht geloescht werden." },
       { status: 500 }
     );
   }

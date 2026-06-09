@@ -343,6 +343,23 @@ export async function createWallPost(post: Omit<SupabaseWallPost, "id" | "create
   return toPost(rows[0]);
 }
 
+export async function getWallPost(id: string) {
+  const response = await supabaseRest(`wall_posts?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+  const rows = (await response.json()) as PostRow[];
+  return rows[0] ? toPost(rows[0]) : null;
+}
+
+export async function deleteWallPost(id: string) {
+  await supabaseRest(`wall_comments?post_id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
+  await supabaseRest(`wall_posts?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
+}
+
 export async function listWallComments() {
   const response = await supabaseRest("wall_comments?select=*&order=created_at.asc");
   const rows = (await response.json()) as CommentRow[];
