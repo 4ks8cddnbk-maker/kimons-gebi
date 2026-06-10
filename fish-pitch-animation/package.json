@@ -1,0 +1,11 @@
+{
+  "name": "fish-pitch-animation",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preview": "hyperframes preview --port 3017",
+    "lint": "hyperframes lint",
+    "inspect": "hyperframes inspect --samples 16",
+    "render": "hyperframes render --output renders/fish-pitch.mp4 --quality standard"
+  }
+}

@@ -2461,6 +2461,27 @@ footer {
   background: linear-gradient(#86d0ff, #2f82bd 48%, #236aa0);
 }
 
+.play-icon {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 15px solid currentColor;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
+}
+
+.play-icon.pause {
+  width: 17px;
+  height: 20px;
+  margin-left: 0;
+  border: 0;
+  background:
+    linear-gradient(currentColor, currentColor) left center / 6px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) right center / 6px 100% no-repeat;
+}
+
 .fish-dock-toggle {
   position: fixed;
   left: 14px;
@@ -3329,17 +3350,7 @@ footer {
 }
 
 .wall-post::after {
-  content: "";
-  position: absolute;
-  top: 11px;
-  left: 14px;
-  width: 11px;
-  height: 11px;
-  background: #ff5f57;
-  border: 1px solid rgba(0, 0, 0, 0.22);
-  border-radius: 999px;
-  box-shadow: 18px 0 0 #ffbd2e, 36px 0 0 #28c840;
-  z-index: 1;
+  content: none;
 }
 
 .wall-post.highlighted {
@@ -3414,18 +3425,41 @@ footer {
 }
 
 .post-song {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 8px 0 12px;
-  padding: 13px;
+  gap: 14px;
+  margin: 18px 0 16px;
+  padding: 18px;
   color: #213047;
-  background: linear-gradient(#f8fbff, #dce7f4);
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255, 255, 255, 0.9), transparent 28%),
+    radial-gradient(circle at 86% 78%, rgba(102, 185, 241, 0.2), transparent 32%),
+    linear-gradient(#fbfdff, #dce7f4 54%, #edf6ff);
   border: 1px solid #aeb9c8;
-  border-radius: 8px;
-  box-shadow: inset 0 1px 0 #fff;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 #fff, 0 12px 24px rgba(23, 40, 68, 0.1);
+}
+
+.post-song div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.post-song small {
+  color: #65748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.post-song b {
+  overflow-wrap: anywhere;
+  color: #1e2d44;
+  font-size: clamp(16px, 2vw, 22px);
+  line-height: 1.15;
 }
 
 .post-song button,
@@ -4177,6 +4211,10 @@ footer {
     padding-bottom: 122px;
   }
 
+  .walls-page {
+    padding-bottom: 132px;
+  }
+
   .fishpage-body,
   .profile-grid {
     gap: 12px;
@@ -4239,6 +4277,15 @@ footer {
 
   .post-profile-chip {
     max-width: 100%;
+  }
+
+  .post-song {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+
+  .post-song button {
+    width: 100%;
   }
 
   .post-image-frame {

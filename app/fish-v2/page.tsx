@@ -2,17 +2,7 @@
 
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-
-const tracks = [
-  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
-  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
-  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
-  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
-  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
-  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" },
-  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3" },
-  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3" }
-];
+import { fishRadioSongs as tracks, getFishRadioSlot, seekSyncedRadioAudio, type FishRadioSlot } from "@/lib/fishRadio";
 
 export default function FishV2Gate() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,8 +14,9 @@ export default function FishV2Gate() {
   const [beatPulse, setBeatPulse] = useState(0);
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
   const [radioStarted, setRadioStarted] = useState(false);
+  const [radioSlot, setRadioSlot] = useState<FishRadioSlot>(() => getFishRadioSlot());
   const audioRef = useRef<HTMLAudioElement>(null);
-  const pendingRadioStartRef = useRef(false);
+  const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -33,11 +24,11 @@ export default function FishV2Gate() {
     audio.load();
     setTrackProgress(0);
     if (pendingRadioStartRef.current || radioStarted) {
-      const shouldJumpIntoSong = pendingRadioStartRef.current;
-      pendingRadioStartRef.current = false;
-      playSelectedTrack(shouldJumpIntoSong);
+      const nextSlot = pendingRadioStartRef.current || radioSlot;
+      pendingRadioStartRef.current = null;
+      playSelectedTrack(nextSlot);
     }
-  }, [activeTrack]);
+  }, [activeTrack, radioSlot, radioStarted]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,20 +48,12 @@ export default function FishV2Gate() {
     window.location.href = "/walls";
   }
 
-  function nextTrack() {
-    const nextIndex =
-      tracks.length > 1 ? (activeTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0;
-    setActiveTrack(nextIndex);
-  }
-
-  function playSelectedTrack(jumpIntoSong = false) {
+  function playSelectedTrack(slot = getFishRadioSlot()) {
     const audio = audioRef.current;
     if (!audio) return;
 
     const startAudio = () => {
-      if (jumpIntoSong && Number.isFinite(audio.duration) && audio.duration > 24) {
-        audio.currentTime = Math.floor(Math.random() * Math.max(1, audio.duration - 18));
-      }
+      seekSyncedRadioAudio(audio, slot);
 
       audio
         .play()
@@ -92,16 +75,18 @@ export default function FishV2Gate() {
   }
 
   function startRadio() {
-    const randomTrack = Math.floor(Math.random() * tracks.length);
-    pendingRadioStartRef.current = true;
+    const slot = getFishRadioSlot();
+    const trackIndex = tracks.findIndex((track) => track.src === slot.src);
+    setRadioSlot(slot);
+    pendingRadioStartRef.current = slot;
 
-    if (randomTrack === activeTrack) {
-      pendingRadioStartRef.current = false;
-      playSelectedTrack(true);
+    if (trackIndex === activeTrack) {
+      pendingRadioStartRef.current = null;
+      playSelectedTrack(slot);
       return;
     }
 
-    setActiveTrack(randomTrack);
+    setActiveTrack(Math.max(0, trackIndex));
   }
 
   function togglePlayback() {
@@ -121,10 +106,29 @@ export default function FishV2Gate() {
   function updateProgress() {
     const audio = audioRef.current;
     if (!audio?.duration) return;
-    setTrackProgress((audio.currentTime / audio.duration) * 100);
+    const slot = getFishRadioSlot();
+    if (slot.src !== radioSlot.src) {
+      const trackIndex = tracks.findIndex((track) => track.src === slot.src);
+      setRadioSlot(slot);
+      if (trackIndex !== activeTrack) {
+        pendingRadioStartRef.current = slot;
+        setActiveTrack(Math.max(0, trackIndex));
+      }
+    }
+    setTrackProgress(slot.progress);
     if (!audio.paused) {
       setBeatPulse(0.58 + Math.abs(Math.sin(audio.currentTime * 5.8)) * 0.4);
     }
+  }
+
+  function nextTrack() {
+    const slot = getFishRadioSlot();
+    if (slot.kind === "host" && slot.src === radioSlot.src) {
+      window.setTimeout(startRadio, Math.max(400, (slot.duration - slot.elapsed) * 1000 + 150));
+      return;
+    }
+
+    startRadio();
   }
 
   function tiltIpod(event: MouseEvent<HTMLDivElement>) {
@@ -138,7 +142,7 @@ export default function FishV2Gate() {
     <main className="fish-v2-gate">
       <audio
         ref={audioRef}
-        src={tracks[activeTrack].src}
+        src={radioSlot.src}
         onTimeUpdate={updateProgress}
         onEnded={nextTrack}
         onPlay={() => {
@@ -211,14 +215,16 @@ export default function FishV2Gate() {
                   <b />
                 </div>
                 <strong>{radioStarted ? "ON AIR" : "START RADIO"}</strong>
-                <span>{radioStarted ? tracks[activeTrack].artist : "shuffle broadcast"}</span>
-                <small>{radioStarted ? tracks[activeTrack].title : "press play"}</small>
+                <span>{radioStarted ? (radioSlot.kind === "host" ? "Moderation" : radioSlot.artist) : "shuffle broadcast"}</span>
+                <small>{radioStarted ? (radioSlot.kind === "host" ? ".fish FM spricht" : radioSlot.title) : "press play"}</small>
               </div>
               <div className="progress">
                 <i style={{ width: `${trackProgress}%` }} />
               </div>
               <p className="ipod-status">
-                {radioStarted ? `${isPlaying ? "On Air" : "Pause"} · ${tracks[activeTrack].title}` : "Radio wartet"}
+                {radioStarted
+                  ? `${isPlaying ? "On Air" : "Pause"} · ${radioSlot.kind === "host" ? "Moderation" : radioSlot.title}`
+                  : "Radio wartet"}
               </p>
             </div>
           </div>
@@ -232,7 +238,7 @@ export default function FishV2Gate() {
               {isPlaying ? "OFF" : "ON"}
             </button>
             <button className="center" type="button" onClick={togglePlayback}>
-              {isPlaying ? "Ⅱ" : "▶"}
+              <span className={`play-icon ${isPlaying ? "pause" : "play"}`} />
             </button>
           </div>
         </div>

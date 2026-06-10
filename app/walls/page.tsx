@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { fishRadioSongs as tracks, getFishRadioSlot, seekSyncedRadioAudio, type FishRadioSlot } from "@/lib/fishRadio";
 
 type WallPost = {
   id: string;
@@ -53,17 +54,6 @@ type Follow = {
   followingId: string;
   createdAt: string;
 };
-
-const tracks = [
-  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
-  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
-  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
-  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
-  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
-  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" },
-  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3" },
-  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3" }
-];
 
 const reactionPrefix = "__reaction__:";
 const reactionOptions = [
@@ -248,10 +238,14 @@ export default function WallsPage() {
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [radioStarted, setRadioStarted] = useState(false);
+  const [radioSlot, setRadioSlot] = useState<FishRadioSlot>(() => getFishRadioSlot());
+  const [previewingSongSrc, setPreviewingSongSrc] = useState("");
   const [postFontStyle, setPostFontStyle] = useState("lucida");
   const audioRef = useRef<HTMLAudioElement>(null);
-  const pendingRadioStartRef = useRef(false);
-  const pendingDirectStartRef = useRef(false);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
+  const previewTimeoutRef = useRef<number | null>(null);
+  const resumeRadioAfterPreviewRef = useRef(false);
 
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
   const viewProfile =
@@ -447,13 +441,12 @@ export default function WallsPage() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (pendingRadioStartRef.current || pendingDirectStartRef.current || radioStarted) {
-      const shouldJumpIntoSong = pendingRadioStartRef.current;
-      pendingRadioStartRef.current = false;
-      pendingDirectStartRef.current = false;
-      playSelectedTrack(shouldJumpIntoSong);
+    if (pendingRadioStartRef.current || radioStarted) {
+      const nextSlot = pendingRadioStartRef.current || radioSlot;
+      pendingRadioStartRef.current = null;
+      playSelectedTrack(nextSlot);
     }
-  }, [activeTrack]);
+  }, [activeTrack, radioSlot, radioStarted]);
 
   async function loadWalls(showSpinner = true) {
     if (showSpinner) setLoading(true);
@@ -658,9 +651,23 @@ export default function WallsPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     notify(".fish Style wird gespeichert...");
+    const avatarFile = formData.get("avatar");
+    let avatar = editableProfile.avatar;
+
+    try {
+      if (avatarFile instanceof File && avatarFile.size) {
+        const upload = await uploadFiles([avatarFile], "profile");
+        avatar = upload.urls[0] || avatar;
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Profilbild konnte nicht hochgeladen werden.");
+      return;
+    }
 
     const payload = {
       profileId: isAdmin ? editableProfile.id : undefined,
+      name: String(formData.get("name") || editableProfile.name).trim(),
+      avatar,
       headline: String(formData.get("headline") || editableProfile.headline),
       bio: String(formData.get("bio") || editableProfile.bio),
       mood: String(formData.get("mood") || editableProfile.mood),
@@ -1064,14 +1071,12 @@ export default function WallsPage() {
     setNotificationsOpen(true);
   }
 
-  function playSelectedTrack(jumpIntoSong = false) {
+  function playSelectedTrack(slot = getFishRadioSlot()) {
     const audio = audioRef.current;
     if (!audio) return;
 
     const startAudio = () => {
-      if (jumpIntoSong && Number.isFinite(audio.duration) && audio.duration > 24) {
-        audio.currentTime = Math.floor(Math.random() * Math.max(1, audio.duration - 18));
-      }
+      seekSyncedRadioAudio(audio, slot);
 
       audio
         .play()
@@ -1092,16 +1097,18 @@ export default function WallsPage() {
   }
 
   function startRadio() {
-    const randomTrack = Math.floor(Math.random() * tracks.length);
-    pendingRadioStartRef.current = true;
+    const slot = getFishRadioSlot();
+    const trackIndex = tracks.findIndex((track) => track.src === slot.src);
+    setRadioSlot(slot);
+    pendingRadioStartRef.current = slot;
 
-    if (randomTrack === activeTrack) {
-      pendingRadioStartRef.current = false;
-      playSelectedTrack(true);
+    if (trackIndex === activeTrack) {
+      pendingRadioStartRef.current = null;
+      playSelectedTrack(slot);
       return;
     }
 
-    setActiveTrack(randomTrack);
+    setActiveTrack(Math.max(0, trackIndex));
   }
 
   function toggleMusic(src?: string) {
@@ -1109,17 +1116,8 @@ export default function WallsPage() {
     if (!audio) return;
 
     if (src) {
-      const trackIndex = tracks.findIndex((track) => track.src === src);
-      if (trackIndex >= 0) {
-        if (trackIndex === activeTrack) {
-          playSelectedTrack(false);
-          return;
-        }
-
-        pendingDirectStartRef.current = true;
-        setActiveTrack(trackIndex);
-        return;
-      }
+      playFishSnippet(src);
+      return;
     }
 
     if (audio.paused) {
@@ -1131,10 +1129,72 @@ export default function WallsPage() {
     setIsPlaying(!audio.muted);
   }
 
+  function playFishSnippet(src: string) {
+    const previewAudio = previewAudioRef.current;
+    const radioAudio = audioRef.current;
+    if (!previewAudio) return;
+
+    if (!previewAudio.paused && previewingSongSrc === src) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewingSongSrc("");
+      if (resumeRadioAfterPreviewRef.current && radioAudio) {
+        radioAudio.muted = false;
+        setIsPlaying(true);
+      }
+      resumeRadioAfterPreviewRef.current = false;
+      return;
+    }
+
+    if (previewTimeoutRef.current) {
+      window.clearTimeout(previewTimeoutRef.current);
+    }
+
+    resumeRadioAfterPreviewRef.current = Boolean(radioAudio && !radioAudio.paused && !radioAudio.muted);
+    if (radioAudio && !radioAudio.paused) {
+      radioAudio.muted = true;
+      setIsPlaying(false);
+    }
+
+    previewAudio.pause();
+    previewAudio.src = src;
+    previewAudio.volume = 0.95;
+    setPreviewingSongSrc(src);
+
+    const startSnippet = () => {
+      if (Number.isFinite(previewAudio.duration) && previewAudio.duration > 30) {
+        previewAudio.currentTime = Math.floor(Math.random() * Math.max(1, previewAudio.duration - 14));
+      }
+      previewAudio.play().catch(() => setPreviewingSongSrc(""));
+      previewTimeoutRef.current = window.setTimeout(() => {
+        previewAudio.pause();
+        previewAudio.currentTime = 0;
+        setPreviewingSongSrc("");
+        if (resumeRadioAfterPreviewRef.current && radioAudio) {
+          radioAudio.muted = false;
+          setIsPlaying(true);
+        }
+        resumeRadioAfterPreviewRef.current = false;
+      }, 10_000);
+    };
+
+    if (previewAudio.readyState >= 1) {
+      startSnippet();
+      return;
+    }
+
+    previewAudio.addEventListener("loadedmetadata", startSnippet, { once: true });
+    previewAudio.load();
+  }
+
   function nextTrack() {
-    setActiveTrack((currentTrack) =>
-      tracks.length > 1 ? (currentTrack + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : 0
-    );
+    const slot = getFishRadioSlot();
+    if (slot.kind === "host" && slot.src === radioSlot.src) {
+      window.setTimeout(startRadio, Math.max(400, (slot.duration - slot.elapsed) * 1000 + 150));
+      return;
+    }
+
+    startRadio();
   }
 
   const wallStyle =
@@ -1155,8 +1215,13 @@ export default function WallsPage() {
   }
 
   function renderProfileChip(profile?: Profile | null) {
+    const canOpenProfile = Boolean(profile?.id && profiles.some((item) => item.id === profile.id));
     return (
-      <button className="post-profile-chip" type="button" onClick={() => openProfile(profile?.id)}>
+      <button
+        className="post-profile-chip"
+        type="button"
+        onClick={() => (canOpenProfile ? openProfile(profile?.id) : undefined)}
+      >
         <span className="post-mini-avatar">
           {profile?.avatar ? <img src={profile.avatar} alt="" /> : profile?.name?.[0] || "?"}
         </span>
@@ -1180,7 +1245,6 @@ export default function WallsPage() {
     const canReact = Boolean(activeProfile && post.authorId !== activeProfile.id);
     const stickerParts = post.sticker.startsWith("font:") ? post.sticker.split("|") : [];
     const postFont = stickerParts[0]?.replace("font:", "") || "lucida";
-    const postLabel = stickerParts[1] || post.sticker;
 
     return (
       <article
@@ -1210,7 +1274,6 @@ export default function WallsPage() {
             .fish loeschen
           </button>
         )}
-        <strong>{postLabel}</strong>
         {post.postType === "image" && post.mediaUrl && (
           <figure className="post-image-frame">
             <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
@@ -1218,10 +1281,15 @@ export default function WallsPage() {
         )}
         {post.postType === "song" && (
           <div className="post-song">
-            <b>
-              {post.songTitle} - {post.songArtist}
-            </b>
-            <button onClick={() => toggleMusic(post.songSrc)}>Abspielen</button>
+            <div>
+              <small>10 Sekunden Preview</small>
+              <b>
+                {post.songTitle} - {post.songArtist}
+              </b>
+            </div>
+            <button onClick={() => toggleMusic(post.songSrc)}>
+              {previewingSongSrc === post.songSrc ? "Stop" : "Abspielen"}
+            </button>
           </div>
         )}
         <p>{post.text}</p>
@@ -1286,18 +1354,51 @@ export default function WallsPage() {
     );
   }
 
+  const partyAuthor: Profile = {
+    id: "party-kimon",
+    name: "Kimon",
+    handle: "kimon",
+    avatar: "",
+    bio: "",
+    mood: "",
+    song: "",
+    theme: "blue",
+    pattern: "aqua",
+    stickerPack: "party",
+    headline: "",
+    glitter: true,
+    backgroundColor: "#dcecff",
+    accentColor: "#66b9f1",
+    fontStyle: "lucida",
+    layoutDensity: "cozy",
+    verified: true,
+    photos: []
+  };
+
   return (
     <main className="walls-page">
       <audio
         ref={audioRef}
-        src={tracks[activeTrack].src}
+        src={radioSlot.src}
         onEnded={nextTrack}
+        onTimeUpdate={() => {
+          const slot = getFishRadioSlot();
+          if (slot.src !== radioSlot.src) {
+            const trackIndex = tracks.findIndex((track) => track.src === slot.src);
+            setRadioSlot(slot);
+            if (trackIndex !== activeTrack) {
+              pendingRadioStartRef.current = slot;
+              setActiveTrack(Math.max(0, trackIndex));
+            }
+          }
+        }}
         onPlay={() => {
           setIsPlaying(!audioRef.current?.muted);
           setRadioStarted(true);
         }}
         onPause={() => setIsPlaying(false)}
       />
+      <audio ref={previewAudioRef} onEnded={() => setPreviewingSongSrc("")} />
       <nav className="topbar fish-topbar" aria-label=".fish Navigation">
         <div>
           <button className="fish-orb-brand" type="button" onClick={openFishPage}>
@@ -1472,11 +1573,13 @@ export default function WallsPage() {
               <>
                 <strong>.fish Player</strong>
                 <span>
-                  {radioStarted ? `103.7 .fish FM · ${tracks[activeTrack].title}` : "103.7 .fish FM · Radio bereit"}
+                  {radioStarted
+                    ? `103.7 .fish FM · ${radioSlot.kind === "host" ? "Moderation" : radioSlot.title}`
+                    : "103.7 .fish FM · Radio bereit"}
                 </span>
                 <div className="ipod-controls-mini">
                   <button className="mini-play" onClick={() => toggleMusic()}>
-                    {isPlaying ? "Ⅱ" : "▶"}
+                    <span className={`play-icon ${isPlaying ? "pause" : "play"}`} />
                   </button>
                 </div>
               </>
@@ -1641,11 +1744,10 @@ export default function WallsPage() {
                   </button>
                   <article className="wall-post party-news-post">
                     <div className="post-route">
-                      {renderProfileChip(profiles.find((profile) => profile.id === "kimon"))}
-                      <span>posted</span>
+                      {renderProfileChip(partyAuthor)}
                     </div>
                     <div className="pinned-ribbon">pinned</div>
-                    <strong>Kimons Party Website</strong>
+                    <strong>Kimons Geburtstagsparty</strong>
                     <div className="party-news-balloons" aria-hidden="true">
                       <span />
                       <span />
@@ -1660,8 +1762,11 @@ export default function WallsPage() {
                       <i />
                     </div>
                     <p>
-                      Kimon's 23. Geburtstag steht hier fest im Feed: 27.06.2026, 19:00, Wendelinstraße 94.
-                      Dresscode schick, aber entspannt.
+                      Kimons Geburtstagsparty
+                      <br />
+                      27.06.2026 · 19:00 Uhr
+                      <br />
+                      Wendelinstraße 94
                     </p>
                     <a className="secondary-button party-news-link" href="/party">
                       Party-Website öffnen
@@ -1877,6 +1982,14 @@ export default function WallsPage() {
                 </div>
                 <div className="fish-modal-body">
                   <form className="pin-form profile-edit-grid" onSubmit={saveStyle}>
+                    <label>
+                      Anzeigename
+                      <input name="name" defaultValue={editableProfile.name} />
+                    </label>
+                    <label>
+                      Neues Profilbild
+                      <input name="avatar" type="file" accept="image/*" />
+                    </label>
                     <label>
                       Überschrift
                       <input name="headline" defaultValue={editableProfile.headline} />

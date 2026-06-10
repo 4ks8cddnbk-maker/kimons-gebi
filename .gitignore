@@ -6,3 +6,10 @@ node_modules
 dist
 coverage
 *.log
+node_modules/
+.next/
+.render-tools/
+node_modules/
+.next/
+.render-tools/
+fish-pitch-animation/.render-tools/

@@ -1,0 +1,1482 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>.fish Pitch Animation</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        color: #172235;
+        font-family: "Lucida Grande", "Helvetica Neue", Arial, sans-serif;
+        background: #dcecff;
+      }
+
+      #fish-pitch {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 14% 18%, rgba(25, 198, 255, 0.48), transparent 23%),
+          radial-gradient(circle at 84% 14%, rgba(255, 110, 159, 0.3), transparent 22%),
+          radial-gradient(circle at 74% 78%, rgba(40, 200, 64, 0.2), transparent 24%),
+          radial-gradient(circle at 24% 88%, rgba(255, 207, 74, 0.24), transparent 22%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px 8px),
+          linear-gradient(135deg, #bfe2ff, #f8fbff 42%, #a8c7e6);
+      }
+
+      .bg-grid {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.36) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.32) 1px, transparent 1px),
+          linear-gradient(115deg, transparent 0 34%, rgba(255, 255, 255, 0.34) 35% 37%, transparent 38% 100%),
+          radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5), transparent 46%);
+        background-size: 36px 36px, 36px 36px, 100% 100%, 100% 100%;
+        opacity: 0.72;
+      }
+
+      .orb {
+        position: absolute;
+        width: 520px;
+        height: 520px;
+        border-radius: 999px;
+        filter: blur(42px);
+        opacity: 0.28;
+        pointer-events: none;
+      }
+
+      .orb.one {
+        right: -140px;
+        bottom: -170px;
+        background: conic-gradient(from 120deg, #19c6ff, #28c840, #ffcf4a, #ff6e9f, #9f7dff, #19c6ff);
+      }
+
+      .orb.two {
+        left: -180px;
+        top: 320px;
+        background: radial-gradient(circle, rgba(25, 198, 255, 0.8), rgba(255, 110, 159, 0.2), transparent 68%);
+      }
+
+      .camera {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .stage {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      .topbar {
+        position: absolute;
+        top: 42px;
+        left: 50%;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 1180px;
+        min-height: 68px;
+        padding: 12px 18px;
+        background:
+          radial-gradient(circle at 14% 50%, rgba(102, 212, 255, 0.45), transparent 18%),
+          radial-gradient(circle at 86% 50%, rgba(255, 110, 159, 0.32), transparent 18%),
+          linear-gradient(rgba(255, 255, 255, 0.88), rgba(215, 226, 241, 0.74) 46%, rgba(126, 143, 166, 0.54) 47%, rgba(247, 250, 255, 0.78));
+        border: 1px solid rgba(82, 101, 129, 0.52);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 #fff, 0 20px 42px rgba(23, 40, 68, 0.16);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand,
+      .nav-pill,
+      .profile-pill,
+      .create-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 9px 16px;
+        color: #20304a;
+        font-weight: 950;
+        border: 1px solid rgba(126, 143, 166, 0.66);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 #fff, 0 9px 20px rgba(23, 40, 68, 0.12);
+      }
+
+      .brand {
+        color: #fff;
+        background:
+          radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.78), transparent 26%),
+          linear-gradient(135deg, #19c6ff, #2f82bd 42%, #ff6e9f);
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.34);
+      }
+
+      .nav-pill,
+      .profile-pill,
+      .create-pill {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.88), rgba(224, 234, 248, 0.72)),
+          radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.9), transparent 28%);
+      }
+
+      .create-pill {
+        margin-left: auto;
+        color: #fff;
+        background:
+          radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.72), transparent 28%),
+          linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border-color: rgba(20, 80, 137, 0.85);
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
+      }
+
+      .mini-avatar,
+      .avatar-dot {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 950;
+        background: linear-gradient(#86d0ff, #236aa0);
+        border: 1px solid rgba(34, 49, 73, 0.2);
+        border-radius: 999px;
+      }
+
+      .hero {
+        position: absolute;
+        top: 168px;
+        left: 166px;
+        width: 1588px;
+        height: 760px;
+      }
+
+      .hero-window,
+      .window,
+      .myspace-card,
+      .post,
+      .modal,
+      .notification-pop,
+      .radio-card {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.2) 42%, rgba(192, 210, 232, 0.22)),
+          radial-gradient(circle at 82% 12%, rgba(25, 198, 255, 0.22), transparent 26%),
+          linear-gradient(#f9fbff, #dcecff);
+        border: 1px solid #8f9db2;
+        border-radius: 14px;
+        box-shadow:
+          0 34px 90px rgba(23, 40, 68, 0.22),
+          0 2px 0 rgba(255, 255, 255, 0.58) inset,
+          inset 0 1px 0 #fff;
+        backdrop-filter: blur(14px);
+      }
+
+      .hero-window {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .window-bar {
+        display: grid;
+        grid-template-columns: 14px 14px 14px 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 18px;
+        color: #fff;
+        font-weight: 950;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.34), transparent 45%),
+          linear-gradient(90deg, #19c6ff, #264e82);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      .window-bar i {
+        width: 13px;
+        height: 13px;
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        border-radius: 999px;
+      }
+
+      .window-bar i:nth-child(1) {
+        background: #ff5f57;
+      }
+
+      .window-bar i:nth-child(2) {
+        background: #ffbd2e;
+      }
+
+      .window-bar i:nth-child(3) {
+        background: #28c840;
+      }
+
+      .hero-body {
+        display: grid;
+        grid-template-columns: 0.94fr 1.06fr;
+        gap: 46px;
+        height: calc(100% - 48px);
+        padding: 58px 66px 62px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        width: max-content;
+        padding: 8px 14px;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 950;
+        background: linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border: 1px solid rgba(20, 80, 137, 0.85);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+      }
+
+      h1 {
+        margin: 22px 0 18px;
+        font-family: "Arial Black", "Lucida Grande", Arial, sans-serif;
+        font-size: 118px;
+        line-height: 0.9;
+        letter-spacing: 0;
+        color: transparent;
+        background: linear-gradient(135deg, #10223e, #146bb3 34%, #e43d86 68%, #142136);
+        -webkit-background-clip: text;
+        background-clip: text;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.52);
+      }
+
+      .hero-copy {
+        max-width: 580px;
+        margin: 0;
+        color: #445268;
+        font-size: 34px;
+        line-height: 1.16;
+        font-weight: 900;
+      }
+
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 34px;
+      }
+
+      .stat {
+        min-height: 116px;
+        padding: 16px;
+        color: #20304a;
+        background:
+          radial-gradient(circle at 82% 10%, rgba(255, 255, 255, 0.9), transparent 28%),
+          linear-gradient(#fff, #dbe4f0);
+        border: 1px solid #aeb9c8;
+        border-radius: 14px;
+        box-shadow: inset 0 1px 0 #fff, 0 12px 24px rgba(23, 40, 68, 0.12);
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 38px;
+        line-height: 1;
+      }
+
+      .stat span {
+        color: #59677a;
+        font-size: 13px;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .hero-feed {
+        position: relative;
+        min-height: 100%;
+      }
+
+      .feed-stack {
+        position: absolute;
+        inset: 0;
+      }
+
+      .post {
+        position: absolute;
+        width: 560px;
+        min-height: 220px;
+        padding: 52px 18px 18px;
+        overflow: visible;
+        color: #1d293b;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.28) 34%, rgba(225, 236, 248, 0.5)),
+          linear-gradient(color-mix(in srgb, var(--pin-color, #fff), white 58%), color-mix(in srgb, var(--pin-color, #fff), #dbe4f0 42%));
+        border: 1px solid rgba(103, 119, 142, 0.68);
+        border-radius: 14px;
+        box-shadow:
+          0 18px 42px rgba(23, 40, 68, 0.16),
+          inset 0 1px 0 rgba(255, 255, 255, 0.95),
+          inset 0 -1px 0 rgba(70, 89, 118, 0.08);
+      }
+
+      .post::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 34px;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.12) 48%, rgba(97, 116, 143, 0.2) 49%, rgba(255, 255, 255, 0.32)),
+          linear-gradient(90deg, color-mix(in srgb, var(--pin-color, #fff), #64c7ff 28%), #e9f1fb);
+        border-bottom: 1px solid rgba(103, 119, 142, 0.42);
+        border-radius: 14px 14px 0 0;
+      }
+
+      .post::after {
+        content: "";
+        position: absolute;
+        top: 11px;
+        left: 14px;
+        width: 11px;
+        height: 11px;
+        background: #ff5f57;
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        border-radius: 999px;
+        box-shadow: 18px 0 0 #ffbd2e, 36px 0 0 #28c840;
+      }
+
+      .post.hero-post-a {
+        top: 18px;
+        right: 64px;
+        --pin-color: #ffe4f0;
+        transform: rotate(2deg);
+      }
+
+      .post.hero-post-b {
+        top: 252px;
+        left: 8px;
+        --pin-color: #eef6ff;
+        transform: rotate(-2deg);
+      }
+
+      .post.hero-post-c {
+        right: 4px;
+        bottom: 0;
+        --pin-color: #fff3ca;
+        transform: rotate(1deg);
+      }
+
+      .route,
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        color: #687488;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .profile-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        padding: 5px 10px 5px 5px;
+        color: #173249;
+        font-size: 14px;
+        font-weight: 950;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.84), rgba(222, 233, 246, 0.74)),
+          radial-gradient(circle at 16% 20%, rgba(102, 185, 241, 0.2), transparent 28%);
+        border: 1px solid rgba(143, 157, 178, 0.72);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 #fff, 0 5px 12px rgba(23, 40, 68, 0.08);
+      }
+
+      .post p {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.18;
+        font-weight: 900;
+      }
+
+      .post-label {
+        display: inline-flex;
+        margin-bottom: 10px;
+        padding: 6px 10px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 950;
+        background: linear-gradient(#19c6ff, #24466f);
+        border-radius: 999px;
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.28);
+      }
+
+      .reactions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .reaction {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        color: #213047;
+        font-size: 20px;
+        font-weight: 950;
+        background:
+          radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.86), transparent 28%),
+          linear-gradient(#ffffff, #dce7f4 55%, #c5d4e8);
+        border: 1px solid rgba(143, 157, 178, 0.72);
+        border-radius: 999px;
+        box-shadow:
+          inset 0 1px 0 #fff,
+          inset 0 -5px 9px rgba(73, 99, 132, 0.12),
+          0 7px 14px rgba(23, 40, 68, 0.1);
+      }
+
+      .reaction.active {
+        color: #fff;
+        background:
+          radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.72), transparent 28%),
+          linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+      }
+
+      .comments {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(126, 143, 166, 0.28);
+      }
+
+      .comment {
+        display: flex;
+        gap: 6px;
+        padding: 8px 10px;
+        color: #3f4b5f;
+        font-size: 14px;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.54);
+        border: 1px solid rgba(174, 185, 200, 0.58);
+        border-radius: 7px;
+      }
+
+      .scene-title {
+        position: absolute;
+        z-index: 70;
+        max-width: 760px;
+      }
+
+      .scene-title h2 {
+        margin: 0;
+        font-family: "Arial Black", "Lucida Grande", Arial, sans-serif;
+        font-size: 86px;
+        line-height: 0.95;
+        letter-spacing: 0;
+        color: #13243e;
+      }
+
+      .scene-title p {
+        margin: 14px 0 0;
+        color: #4b596e;
+        font-size: 28px;
+        line-height: 1.16;
+        font-weight: 900;
+      }
+
+      .feed-world {
+        position: absolute;
+        top: 168px;
+        left: 130px;
+        width: 1660px;
+        height: 770px;
+      }
+
+      .profile-card {
+        position: absolute;
+        left: 0;
+        top: 34px;
+        width: 440px;
+        overflow: hidden;
+      }
+
+      .profile-grid {
+        display: grid;
+        gap: 15px;
+        padding: 24px;
+      }
+
+      .avatar-large {
+        display: grid;
+        place-items: center;
+        width: 100%;
+        aspect-ratio: 1.08;
+        color: #fff;
+        font-size: 108px;
+        font-weight: 950;
+        background:
+          radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.64), transparent 24%),
+          linear-gradient(135deg, #19c6ff, #243f66);
+        border: 1px solid rgba(34, 49, 73, 0.25);
+        border-radius: 12px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 12px 22px rgba(23, 40, 68, 0.14);
+      }
+
+      .profile-card h3 {
+        margin: 0;
+        font-size: 44px;
+      }
+
+      .profile-card p {
+        margin: 0;
+        color: #5b6678;
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .status-pill,
+      .follow-button,
+      .small-pill {
+        min-height: 42px;
+        padding: 10px 14px;
+        color: #233149;
+        font-size: 15px;
+        font-weight: 950;
+        background: linear-gradient(#fff, #dbe4f0);
+        border: 1px solid #aeb9c8;
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 #fff;
+      }
+
+      .follow-button {
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background:
+          radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.7), transparent 28%),
+          linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border-color: rgba(20, 80, 137, 0.85);
+      }
+
+      .main-feed {
+        position: absolute;
+        left: 480px;
+        top: 0;
+        display: grid;
+        gap: 24px;
+        width: 760px;
+      }
+
+      .main-feed .post {
+        position: relative;
+        width: 100%;
+        min-height: 240px;
+        transform: none;
+      }
+
+      .image-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 12px 0 16px;
+        padding: 18px;
+        background:
+          radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.9), transparent 24%),
+          radial-gradient(circle at 84% 82%, rgba(102, 212, 255, 0.36), transparent 34%),
+          linear-gradient(rgba(255, 255, 255, 0.82), rgba(222, 235, 250, 0.72));
+        border: 1px solid rgba(126, 143, 166, 0.5);
+        border-radius: 20px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 18px 38px rgba(23, 40, 68, 0.16);
+      }
+
+      .photo {
+        width: 100%;
+        height: 210px;
+        border: 8px solid rgba(255, 255, 255, 0.88);
+        border-radius: 14px;
+        background:
+          radial-gradient(circle at 28% 28%, #fff 0 5%, transparent 6%),
+          radial-gradient(circle at 62% 30%, #ffcf4a 0 8%, transparent 9%),
+          radial-gradient(circle at 42% 60%, #ff6e9f 0 11%, transparent 12%),
+          linear-gradient(135deg, #76d2ff, #2f82bd 48%, #1f3556);
+        box-shadow: 0 12px 26px rgba(23, 40, 68, 0.18);
+      }
+
+      .side-rail {
+        position: absolute;
+        right: 0;
+        top: 34px;
+        display: grid;
+        gap: 18px;
+        width: 380px;
+      }
+
+      .friend-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .friend {
+        display: grid;
+        justify-items: center;
+        gap: 7px;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 950;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.54);
+        border: 1px solid rgba(174, 185, 200, 0.58);
+        border-radius: 12px;
+      }
+
+      .friend .avatar-dot {
+        width: 50px;
+        height: 50px;
+      }
+
+      .compose-zone {
+        position: absolute;
+        left: 250px;
+        top: 184px;
+        width: 1420px;
+        height: 720px;
+      }
+
+      .modal {
+        position: absolute;
+        left: 360px;
+        top: 52px;
+        width: 700px;
+        overflow: hidden;
+      }
+
+      .modal-body {
+        display: grid;
+        gap: 16px;
+        padding: 24px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+      }
+
+      .tabs span {
+        flex: 1;
+        padding: 12px;
+        color: #34445a;
+        font-weight: 950;
+        text-align: center;
+        background: linear-gradient(#fff, #dbe4f0);
+        border: 1px solid #aeb9c8;
+        border-radius: 999px;
+      }
+
+      .tabs span.active {
+        color: #fff;
+        background: linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+      }
+
+      .input-box {
+        min-height: 128px;
+        padding: 18px;
+        color: #24334a;
+        font-size: 29px;
+        font-weight: 900;
+        background: linear-gradient(#fff, #e8eef6);
+        border: 1px solid #aeb9c8;
+        border-radius: 12px;
+        box-shadow: inset 0 1px 3px rgba(23, 40, 68, 0.12);
+      }
+
+      .option-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .option-card {
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(143, 157, 178, 0.42);
+        border-radius: 14px;
+      }
+
+      .publish {
+        min-height: 56px;
+        color: #fff;
+        font-size: 20px;
+        font-weight: 950;
+        background:
+          radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.7), transparent 28%),
+          linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border: 1px solid rgba(20, 80, 137, 0.85);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 15px 30px rgba(23, 40, 68, 0.18);
+      }
+
+      .created-posts {
+        position: absolute;
+        right: 50px;
+        top: 12px;
+        width: 470px;
+        height: 690px;
+      }
+
+      .created-posts .post {
+        width: 440px;
+        min-height: 190px;
+      }
+
+      .created-posts .one {
+        top: 0;
+        right: 20px;
+        --pin-color: #ffe4f0;
+        transform: rotate(2deg);
+      }
+
+      .created-posts .two {
+        top: 238px;
+        right: 0;
+        --pin-color: #eef6ff;
+        transform: rotate(-1deg);
+      }
+
+      .created-posts .three {
+        top: 476px;
+        right: 28px;
+        --pin-color: #fff3ca;
+        transform: rotate(1.5deg);
+      }
+
+      .song-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 10px 0 12px;
+        padding: 14px;
+        color: #213047;
+        background: linear-gradient(#f8fbff, #dce7f4);
+        border: 1px solid #aeb9c8;
+        border-radius: 8px;
+        box-shadow: inset 0 1px 0 #fff;
+      }
+
+      .song-card b {
+        display: block;
+        font-size: 17px;
+      }
+
+      .song-card span {
+        color: #5b6678;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .play-button {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        color: #fff;
+        font-weight: 950;
+        background: linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border-radius: 999px;
+      }
+
+      .notification-pop {
+        position: absolute;
+        right: 170px;
+        top: 126px;
+        z-index: 100;
+        width: 420px;
+        padding: 14px;
+      }
+
+      .notification-pop h3 {
+        margin: 0 0 10px;
+        font-size: 19px;
+      }
+
+      .note {
+        display: grid;
+        gap: 3px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.64);
+        border: 1px solid rgba(174, 185, 200, 0.72);
+        border-radius: 8px;
+      }
+
+      .note strong {
+        color: #223149;
+      }
+
+      .note span {
+        color: #687488;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .reaction-burst {
+        position: absolute;
+        inset: 0;
+        z-index: 90;
+        pointer-events: none;
+      }
+
+      .float-react {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 76px;
+        height: 76px;
+        color: #fff;
+        font-size: 30px;
+        font-weight: 950;
+        background:
+          radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.88), transparent 28%),
+          linear-gradient(#91dcff, #2f82bd 48%, #236aa0);
+        border: 1px solid rgba(20, 80, 137, 0.72);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 18px 36px rgba(23, 40, 68, 0.22);
+      }
+
+      .float-react:nth-child(1) { left: 520px; top: 610px; }
+      .float-react:nth-child(2) { left: 690px; top: 410px; background: linear-gradient(#ff9bbd, #ec6fa9 48%, #9e2f62); }
+      .float-react:nth-child(3) { left: 950px; top: 700px; background: linear-gradient(#ffe182, #ffbd2e 48%, #b67a00); }
+      .float-react:nth-child(4) { left: 1130px; top: 472px; background: linear-gradient(#8cffaa, #28c840 48%, #14752d); }
+      .float-react:nth-child(5) { left: 1340px; top: 635px; background: linear-gradient(#c4b9ff, #8a6dff 48%, #4a37a5); }
+      .float-react:nth-child(6) { left: 780px; top: 800px; background: linear-gradient(#ff8b87, #d43c37 52%, #a92320); }
+
+      .radio-scene {
+        position: absolute;
+        left: 192px;
+        top: 170px;
+        display: grid;
+        grid-template-columns: 640px 1fr;
+        gap: 72px;
+        align-items: center;
+        width: 1536px;
+        height: 760px;
+      }
+
+      .ipod {
+        position: relative;
+        width: 560px;
+        padding: 34px 34px 46px;
+        background:
+          radial-gradient(circle at 24% 14%, rgba(255, 255, 255, 0.88), transparent 25%),
+          linear-gradient(125deg, #f8fbff, #cfd9e6 38%, #f9fbff 62%, #a7b4c4);
+        border: 1px solid rgba(34, 49, 73, 0.32);
+        border-radius: 42px;
+        box-shadow:
+          0 42px 100px rgba(23, 40, 68, 0.28),
+          inset 0 1px 0 rgba(255, 255, 255, 0.88),
+          inset -18px -28px 36px rgba(0, 0, 0, 0.1),
+          inset 18px 16px 28px rgba(255, 255, 255, 0.64);
+      }
+
+      .ipod-screen {
+        display: grid;
+        gap: 15px;
+        min-height: 382px;
+        padding: 24px;
+        color: #fff;
+        background:
+          radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.36), transparent 28%),
+          linear-gradient(#2ccfff, #0a63c7);
+        border: 7px solid #111827;
+        border-radius: 12px;
+        box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.18);
+      }
+
+      .frequency {
+        display: grid;
+        place-items: center;
+        min-height: 190px;
+        border: 1px solid rgba(255, 255, 255, 0.36);
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at 24% 30%, rgba(255, 255, 255, 0.25), transparent 25%),
+          radial-gradient(circle at 76% 70%, rgba(255, 110, 159, 0.22), transparent 28%),
+          rgba(255, 255, 255, 0.1);
+      }
+
+      .frequency strong {
+        font-size: 92px;
+        line-height: 0.86;
+      }
+
+      .frequency span {
+        font-size: 24px;
+        font-weight: 950;
+      }
+
+      .wave-bars {
+        display: flex;
+        align-items: end;
+        justify-content: center;
+        gap: 7px;
+        height: 66px;
+      }
+
+      .wave-bars i {
+        width: 12px;
+        height: 24px;
+        background: #fff;
+        border-radius: 999px;
+        opacity: 0.9;
+      }
+
+      .wheel {
+        display: grid;
+        place-items: center;
+        width: 230px;
+        height: 230px;
+        margin: 30px auto 0;
+        color: #7b8493;
+        font-size: 18px;
+        font-weight: 950;
+        background: radial-gradient(circle, #f8fbff 0 28%, #dce4ef 29% 56%, #f8fbff 57%);
+        border-radius: 999px;
+        box-shadow: inset 0 2px 8px rgba(23, 40, 68, 0.16);
+      }
+
+      .wheel::before {
+        content: "";
+        width: 76px;
+        height: 76px;
+        background: linear-gradient(#fff, #cbd7e6);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 #fff, 0 5px 12px rgba(23, 40, 68, 0.12);
+      }
+
+      .radio-copy h2,
+      .event-copy h2,
+      .final-copy h2 {
+        margin: 0;
+        font-family: "Arial Black", "Lucida Grande", Arial, sans-serif;
+        font-size: 92px;
+        line-height: 0.92;
+      }
+
+      .radio-copy p,
+      .event-copy p,
+      .final-copy p {
+        margin: 18px 0 0;
+        color: #445268;
+        font-size: 31px;
+        line-height: 1.18;
+        font-weight: 900;
+      }
+
+      .now-playing {
+        display: flex;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .now-playing .small-pill {
+        background: linear-gradient(#fff, #dbe4f0);
+      }
+
+      .event-scene {
+        position: absolute;
+        left: 192px;
+        top: 166px;
+        display: grid;
+        grid-template-columns: 1fr 640px;
+        gap: 72px;
+        align-items: center;
+        width: 1536px;
+        height: 760px;
+      }
+
+      .event-card {
+        position: relative;
+        width: 640px;
+        min-height: 604px;
+        overflow: hidden;
+      }
+
+      .event-body {
+        display: grid;
+        gap: 18px;
+        padding: 28px;
+      }
+
+      .calendar {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.58), transparent 26%),
+          linear-gradient(#e9f4ff, #a9c2df 60%, #8faacc);
+        border: 2px solid #222936;
+        border-radius: 14px;
+        box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.2);
+      }
+
+      .date-box {
+        display: grid;
+        place-items: center;
+        min-height: 170px;
+        color: #fff;
+        background: linear-gradient(#ff8b87, #d43c37 52%, #a92320);
+      }
+
+      .date-box strong {
+        font-size: 74px;
+        line-height: 0.8;
+      }
+
+      .date-box span {
+        font-weight: 950;
+      }
+
+      .event-info {
+        padding: 22px;
+      }
+
+      .event-info h3 {
+        margin: 0;
+        font-size: 34px;
+      }
+
+      .event-info p {
+        margin: 8px 0 0;
+        color: #42536c;
+        font-size: 19px;
+        font-weight: 900;
+      }
+
+      .rsvp-row {
+        display: flex;
+        gap: 10px;
+      }
+
+      .rsvp {
+        flex: 1;
+        padding: 14px;
+        font-weight: 950;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid rgba(174, 185, 200, 0.72);
+        border-radius: 999px;
+      }
+
+      .final-scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 120px;
+      }
+
+      .final-window {
+        width: 1280px;
+        overflow: hidden;
+      }
+
+      .final-copy {
+        padding: 70px 82px;
+        text-align: center;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 38px;
+      }
+
+      .feature {
+        min-height: 118px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid rgba(174, 185, 200, 0.72);
+        border-radius: 14px;
+        box-shadow: inset 0 1px 0 #fff;
+      }
+
+      .feature strong {
+        display: block;
+        font-size: 24px;
+      }
+
+      .feature span {
+        display: block;
+        margin-top: 6px;
+        color: #5b6678;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .caption {
+        position: absolute;
+        left: 50%;
+        bottom: 46px;
+        z-index: 120;
+        width: 980px;
+        min-height: 54px;
+        padding: 13px 20px;
+        color: #173249;
+        font-size: 18px;
+        font-weight: 950;
+        text-align: center;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.84), rgba(235, 244, 255, 0.9)),
+          repeating-linear-gradient(90deg, rgba(102, 185, 241, 0.1) 0 1px, transparent 1px 5px);
+        border: 1px solid #8fa6bd;
+        border-radius: 999px;
+        box-shadow: 0 18px 38px rgba(23, 40, 68, 0.2), inset 0 1px 0 #fff;
+      }
+
+      .caption span {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 0 24px;
+        opacity: 0;
+      }
+
+      .hidden-scene {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fish-pitch" data-composition-id="fish-pitch" data-start="0" data-width="1920" data-height="1080">
+      <div class="bg-grid"></div>
+      <div class="orb one"></div>
+      <div class="orb two"></div>
+
+      <div class="topbar">
+        <div class="brand">.fish</div>
+        <div class="nav-pill">Feed</div>
+        <div class="nav-pill">Profiles</div>
+        <div class="nav-pill">Radio</div>
+        <div class="profile-pill"><span class="mini-avatar">K</span> Kimon</div>
+        <div class="create-pill">Create .fish</div>
+      </div>
+
+      <div class="camera">
+        <div class="stage">
+          <section class="hero scene">
+            <div class="hero-window">
+              <div class="window-bar"><i></i><i></i><i></i><strong>.fish social OS</strong></div>
+              <div class="hero-body">
+                <div>
+                  <span class="eyebrow">Pitch-ready product tour</span>
+                  <h1>Social posts with party energy.</h1>
+                  <p class="hero-copy">A playful network for profiles, comments, reactions, songs, image pins, radio, and events.</p>
+                  <div class="hero-stats">
+                    <div class="stat"><strong>247</strong><span>live reactions</span></div>
+                    <div class="stat"><strong>89</strong><span>comments flying</span></div>
+                    <div class="stat"><strong>103.7</strong><span>.fish FM</span></div>
+                  </div>
+                </div>
+                <div class="hero-feed">
+                  <div class="feed-stack">
+                    <article class="post hero-post-a">
+                      <div class="route"><span class="profile-chip"><span class="avatar-dot">M</span>Maya</span> posted to Kimon</div>
+                      <span class="post-label">Text .fish</span>
+                      <p>This wall is already louder than the group chat.</p>
+                      <div class="reactions"><span class="reaction active">100</span><span class="reaction">WOW</span><span class="reaction">HE</span></div>
+                    </article>
+                    <article class="post hero-post-b">
+                      <div class="route"><span class="profile-chip"><span class="avatar-dot">L</span>Leo</span> collabed with Ana</div>
+                      <span class="post-label">Song .fish</span>
+                      <div class="song-card"><div><b>Call Me Maybe</b><span>Carly Rae Jepsen</span></div><span class="play-button">Play</span></div>
+                    </article>
+                    <article class="post hero-post-c">
+                      <div class="route"><span class="profile-chip"><span class="avatar-dot">S</span>Sofia</span> added a memory</div>
+                      <span class="post-label">Image .fish</span>
+                      <p>Instant memories, not buried in camera rolls.</p>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="feed-world scene hidden-scene">
+            <div class="profile-card myspace-card">
+              <div class="window-bar"><i></i><i></i><i></i><strong>@kimon</strong></div>
+              <div class="profile-grid">
+                <div class="avatar-large">K</div>
+                <h3>Kimon's .fish</h3>
+                <p>mood: birthday launch mode</p>
+                <div class="status-pill">Now playing: Moment - C4RL</div>
+                <div class="follow-button">Following</div>
+              </div>
+            </div>
+
+            <div class="main-feed">
+              <article class="post feed-post-one" style="--pin-color:#ffe4f0">
+                <div class="route"><span class="profile-chip"><span class="avatar-dot">A</span>Ana</span> to <span class="profile-chip"><span class="avatar-dot">K</span>Kimon</span></div>
+                <span class="post-label">Pinned .fish</span>
+                <p>Everyone is here. Comments are moving faster than the playlist.</p>
+                <div class="reactions"><span class="reaction active">100</span><span class="reaction active">WOW</span><span class="reaction active">HE</span><span class="reaction">LOL</span><span class="reaction">+42</span></div>
+                <div class="comments">
+                  <div class="comment"><b>Maya</b> this is chaos in the best way</div>
+                  <div class="comment"><b>Leo</b> post the next song</div>
+                  <div class="comment"><b>Sofia</b> the wall is alive</div>
+                </div>
+              </article>
+
+              <article class="post feed-post-two" style="--pin-color:#eef6ff">
+                <div class="route"><span class="profile-chip"><span class="avatar-dot">J</span>Jules</span> posted a photo</div>
+                <span class="post-label">Image .fish</span>
+                <div class="image-frame"><div class="photo"></div></div>
+                <p>Photos land directly in the social moment.</p>
+              </article>
+            </div>
+
+            <aside class="side-rail">
+              <div class="window">
+                <div class="window-bar"><i></i><i></i><i></i><strong>Top friends</strong></div>
+                <div class="profile-grid">
+                  <div class="friend-grid">
+                    <div class="friend"><span class="avatar-dot">A</span>Ana</div>
+                    <div class="friend"><span class="avatar-dot">L</span>Leo</div>
+                    <div class="friend"><span class="avatar-dot">S</span>Sofia</div>
+                    <div class="friend"><span class="avatar-dot">M</span>Maya</div>
+                    <div class="friend"><span class="avatar-dot">J</span>Jules</div>
+                    <div class="friend"><span class="avatar-dot">N</span>Noah</div>
+                  </div>
+                </div>
+              </div>
+              <div class="window">
+                <div class="window-bar"><i></i><i></i><i></i><strong>Notifications</strong></div>
+                <div class="profile-grid">
+                  <div class="note"><strong>23 new reactions</strong><span>just now</span></div>
+                  <div class="note"><strong>14 comments on your .fish</strong><span>live</span></div>
+                  <div class="note"><strong>2 collab posts waiting</strong><span>tap to open</span></div>
+                </div>
+              </div>
+            </aside>
+          </section>
+
+          <section class="compose-zone scene hidden-scene">
+            <div class="scene-title" style="left:0; top:16px;">
+              <h2>Create anything in one flow.</h2>
+              <p>Text, images, songs, collabs, and profile-to-profile pins all feel like one native .fish action.</p>
+            </div>
+            <div class="modal">
+              <div class="window-bar"><i></i><i></i><i></i><strong>Create .fish</strong></div>
+              <div class="modal-body">
+                <div class="tabs"><span class="active">Text</span><span>Image</span><span>Song</span></div>
+                <div class="input-box">Drop a memory, tag a friend, choose a style, publish.</div>
+                <div class="option-grid">
+                  <div class="option-card"><b>Post mode</b><br />Pin or collab</div>
+                  <div class="option-card"><b>Font style</b><br />Aqua, pixel, bubble, script</div>
+                  <div class="option-card"><b>Color</b><br />Theme-matched cards</div>
+                  <div class="option-card"><b>Target</b><br />Your wall or a friend's</div>
+                </div>
+                <button class="publish">Publish to .fish</button>
+              </div>
+            </div>
+            <div class="created-posts">
+              <article class="post one">
+                <span class="post-label">Text .fish</span>
+                <p>A message that actually feels personal.</p>
+              </article>
+              <article class="post two">
+                <span class="post-label">Song .fish</span>
+                <div class="song-card"><div><b>Party In The U.S.A.</b><span>Miley Cyrus</span></div><span class="play-button">Play</span></div>
+              </article>
+              <article class="post three">
+                <span class="post-label">Image .fish</span>
+                <div class="image-frame"><div class="photo"></div></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="radio-scene scene hidden-scene">
+            <div class="ipod">
+              <div class="ipod-screen">
+                <div class="tabs"><span class="active">Radio</span></div>
+                <small>103.7 .fish FM</small>
+                <div class="frequency"><div><strong>103.7</strong><span>.fish FM - ON AIR</span></div></div>
+                <div class="wave-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <b>Now: What Makes You Beautiful</b>
+              </div>
+              <div class="wheel"></div>
+            </div>
+            <div class="radio-copy">
+              <h2>The radio makes the whole app feel live.</h2>
+              <p>Shuffle a shared soundtrack, pin songs into the feed, and let every profile carry a vibe.</p>
+              <div class="now-playing"><span class="small-pill">ON AIR</span><span class="small-pill">shuffle broadcast</span><span class="small-pill">song posts</span></div>
+            </div>
+          </section>
+
+          <section class="event-scene scene hidden-scene">
+            <div class="event-copy">
+              <h2>Events become social pages.</h2>
+              <p>Birthdays are just one example: create a living event space with posts, photos, songs, reactions, and RSVP energy.</p>
+              <div class="now-playing"><span class="small-pill">Birthday wall</span><span class="small-pill">Guest posts</span><span class="small-pill">Shared playlist</span></div>
+            </div>
+            <div class="event-card myspace-card">
+              <div class="window-bar"><i></i><i></i><i></i><strong>Event .fish</strong></div>
+              <div class="event-body">
+                <div class="calendar">
+                  <div class="date-box"><div><strong>23</strong><span>JUN</span></div></div>
+                  <div class="event-info">
+                    <h3>Kimon's 23rd Birthday</h3>
+                    <p>A private event feed with memories, reactions, radio, and posts from everyone invited.</p>
+                  </div>
+                </div>
+                <div class="rsvp-row"><div class="rsvp">Going 42</div><div class="rsvp">Maybe 7</div><div class="rsvp">Posts 128</div></div>
+                <article class="post" style="position:relative; width:100%; min-height:190px; --pin-color:#fff3ca;">
+                  <span class="post-label">Event post</span>
+                  <p>Bring your photos, your song, and one comment that will haunt the group chat.</p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section class="final-scene scene hidden-scene">
+            <div class="final-window myspace-card">
+              <div class="window-bar"><i></i><i></i><i></i><strong>.fish</strong></div>
+              <div class="final-copy">
+                <h2>A social product that feels instantly alive.</h2>
+                <p>Profiles, posts, comments, reactions, image pins, song pins, radio, notifications, collabs, and event pages in one glossy world.</p>
+                <div class="feature-grid">
+                  <div class="feature"><strong>Posts</strong><span>text, image, song, collab</span></div>
+                  <div class="feature"><strong>Reactions</strong><span>fast social feedback</span></div>
+                  <div class="feature"><strong>Radio</strong><span>shared soundtrack</span></div>
+                  <div class="feature"><strong>Events</strong><span>birthday pages and more</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="notification-pop hidden-scene">
+        <h3>Live activity</h3>
+        <div class="note"><strong>Maya reacted with 100</strong><span>on your post</span></div>
+        <div class="note"><strong>Leo commented</strong><span>"this needs to be pinned"</span></div>
+        <div class="note"><strong>Sofia created a collab .fish</strong><span>waiting for you</span></div>
+      </div>
+
+      <div class="reaction-burst">
+        <div class="float-react">100</div>
+        <div class="float-react">HE</div>
+        <div class="float-react">WOW</div>
+        <div class="float-react">+1</div>
+        <div class="float-react">LOL</div>
+        <div class="float-react">YES</div>
+      </div>
+
+      <div class="caption">
+        <span class="cap-1">.fish turns every post into a live, social moment.</span>
+        <span class="cap-2">Comments, reactions, follows, and collabs keep the room moving.</span>
+        <span class="cap-3">One composer. Every format. Still unmistakably .fish.</span>
+        <span class="cap-4">Radio gives the product a shared pulse.</span>
+        <span class="cap-5">Birthday pages are event spaces: posts, guests, songs, memories.</span>
+        <span class="cap-6">Pitch-ready: a clean product story with a party heartbeat.</span>
+      </div>
+
+      <script src="vendor/gsap.min.js"></script>
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        gsap.set(".scene:not(.hero), .notification-pop", { opacity: 0 });
+        gsap.set(".reaction-burst .float-react", { opacity: 0, scale: 0.5 });
+        gsap.set(".topbar", { xPercent: -50, y: -20, opacity: 0 });
+        gsap.set(".hero-window", { y: 32, scale: 0.96, opacity: 0 });
+        gsap.set(".hero-post-a, .hero-post-b, .hero-post-c", { y: 80, opacity: 0 });
+        gsap.set(".caption", { xPercent: -50, y: 30, opacity: 0 });
+        gsap.set(".caption span", { opacity: 0 });
+        gsap.set(".cap-1", { opacity: 1 });
+        gsap.set(".wave-bars i", { scaleY: 0.35, transformOrigin: "50% 100%" });
+
+        tl.to(".topbar", { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.2)
+          .to(".hero-window", { y: 0, scale: 1, opacity: 1, duration: 0.9, ease: "power3.out" }, 0.35)
+          .to(".hero-post-a", { y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.4)" }, 0.9)
+          .to(".hero-post-b", { y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.4)" }, 1.1)
+          .to(".hero-post-c", { y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.4)" }, 1.3)
+          .to(".caption", { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 1.55)
+          .to(".hero-window", { scale: 1.025, duration: 1.2, ease: "sine.inOut" }, 2.0)
+          .to(".hero", { opacity: 0, scale: 0.92, y: -40, duration: 0.55, ease: "power2.inOut" }, 4.0)
+          .to(".feed-world", { opacity: 1, duration: 0.45, ease: "power2.out" }, 4.15)
+          .from(".profile-card", { x: -120, opacity: 0, duration: 0.65, ease: "power3.out" }, 4.25)
+          .from(".main-feed .post", { y: 120, opacity: 0, stagger: 0.18, duration: 0.7, ease: "back.out(1.2)" }, 4.35)
+          .from(".side-rail .window", { x: 130, opacity: 0, stagger: 0.16, duration: 0.62, ease: "power3.out" }, 4.55)
+          .to(".camera", { scale: 1.13, x: -120, y: -24, duration: 1.4, ease: "sine.inOut" }, 5.3)
+          .to(".cap-1", { opacity: 0, duration: 0.2, ease: "power2.out" }, 5.35)
+          .to(".cap-2", { opacity: 1, duration: 0.2, ease: "power2.out" }, 5.45)
+          .to(".notification-pop", { opacity: 1, y: 18, duration: 0.48, ease: "back.out(1.4)" }, 6.15)
+          .to(".reaction-burst .float-react", { opacity: 1, scale: 1, y: -220, stagger: 0.08, duration: 0.8, ease: "back.out(1.8)" }, 6.3)
+          .to(".reaction-burst .float-react", { opacity: 0, scale: 0.72, y: -360, stagger: 0.04, duration: 0.58, ease: "power2.in" }, 7.65)
+          .to(".feed-post-one", { scale: 1.04, duration: 0.38, yoyo: true, repeat: 1, ease: "power2.inOut" }, 6.6)
+          .to(".feed-world, .notification-pop", { opacity: 0, scale: 0.94, y: -40, duration: 0.55, ease: "power2.inOut" }, 8.2)
+          .to(".camera", { scale: 1, x: 0, y: 0, duration: 0.6, ease: "power2.out" }, 8.2)
+          .to(".compose-zone", { opacity: 1, duration: 0.45, ease: "power2.out" }, 8.45)
+          .from(".compose-zone .scene-title", { x: -110, opacity: 0, duration: 0.7, ease: "power3.out" }, 8.55)
+          .from(".modal", { y: 120, scale: 0.92, opacity: 0, duration: 0.72, ease: "back.out(1.2)" }, 8.75)
+          .from(".created-posts .post", { x: 160, y: 60, opacity: 0, stagger: 0.16, duration: 0.62, ease: "back.out(1.35)" }, 9.2)
+          .to(".tabs span", { y: -4, stagger: 0.08, duration: 0.22, yoyo: true, repeat: 1, ease: "power2.inOut" }, 10.1)
+          .to(".publish", { scale: 1.06, duration: 0.26, yoyo: true, repeat: 1, ease: "power2.inOut" }, 10.8)
+          .to(".cap-2", { opacity: 0, duration: 0.2, ease: "power2.out" }, 10.75)
+          .to(".cap-3", { opacity: 1, duration: 0.2, ease: "power2.out" }, 10.85)
+          .to(".compose-zone", { opacity: 0, scale: 0.95, y: -36, duration: 0.55, ease: "power2.inOut" }, 12.1)
+          .to(".radio-scene", { opacity: 1, duration: 0.45, ease: "power2.out" }, 12.35)
+          .from(".ipod", { x: -160, rotation: -5, opacity: 0, duration: 0.8, ease: "back.out(1.2)" }, 12.45)
+          .from(".radio-copy", { x: 130, opacity: 0, duration: 0.72, ease: "power3.out" }, 12.65)
+          .to(".wave-bars i", { scaleY: 1.2, stagger: 0.05, duration: 0.24, yoyo: true, repeat: 13, ease: "sine.inOut" }, 13.05)
+          .to(".ipod", { rotation: 2, scale: 1.03, duration: 0.7, yoyo: true, repeat: 3, ease: "sine.inOut" }, 13.35)
+          .to(".cap-3", { opacity: 0, duration: 0.2, ease: "power2.out" }, 13.28)
+          .to(".cap-4", { opacity: 1, duration: 0.2, ease: "power2.out" }, 13.38)
+          .to(".radio-scene", { opacity: 0, scale: 0.95, y: -30, duration: 0.55, ease: "power2.inOut" }, 16.25)
+          .to(".event-scene", { opacity: 1, duration: 0.45, ease: "power2.out" }, 16.5)
+          .from(".event-copy", { x: -120, opacity: 0, duration: 0.72, ease: "power3.out" }, 16.6)
+          .from(".event-card", { x: 150, rotation: 3, opacity: 0, duration: 0.76, ease: "back.out(1.2)" }, 16.78)
+          .from(".rsvp", { y: 42, opacity: 0, stagger: 0.09, duration: 0.45, ease: "back.out(1.4)" }, 17.45)
+          .to(".cap-4", { opacity: 0, duration: 0.2, ease: "power2.out" }, 17.45)
+          .to(".cap-5", { opacity: 1, duration: 0.2, ease: "power2.out" }, 17.55)
+          .to(".event-card .post", { scale: 1.035, duration: 0.4, yoyo: true, repeat: 1, ease: "power2.inOut" }, 18.6)
+          .to(".event-scene", { opacity: 0, scale: 0.94, y: -40, duration: 0.55, ease: "power2.inOut" }, 20.2)
+          .to(".final-scene", { opacity: 1, duration: 0.55, ease: "power2.out" }, 20.45)
+          .from(".final-window", { y: 110, scale: 0.92, opacity: 0, duration: 0.78, ease: "back.out(1.2)" }, 20.55)
+          .from(".feature", { y: 56, opacity: 0, stagger: 0.1, duration: 0.5, ease: "back.out(1.35)" }, 21.2)
+          .to(".cap-5", { opacity: 0, duration: 0.2, ease: "power2.out" }, 21.25)
+          .to(".cap-6", { opacity: 1, duration: 0.2, ease: "power2.out" }, 21.35)
+          .to(".final-window", { scale: 1.025, duration: 1.5, ease: "sine.inOut" }, 22.0)
+          .to(".topbar", { y: -20, opacity: 0, duration: 0.45, ease: "power2.in" }, 24.1)
+          .to(".caption", { y: 26, opacity: 0, duration: 0.45, ease: "power2.in" }, 24.2);
+
+        window.__timelines["fish-pitch"] = tl;
+        const seekTo = new URLSearchParams(window.location.search).get("seek");
+        if (seekTo !== null) {
+          tl.seek(Number(seekTo) || 0).pause();
+        }
+        if (new URLSearchParams(window.location.search).has("autoplay")) {
+          tl.play(0);
+        }
+      </script>
+    </div>
+  </body>
+</html>

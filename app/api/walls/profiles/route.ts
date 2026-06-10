@@ -55,6 +55,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Diesen Nutzernamen gibt es schon." }, { status: 409 });
     }
 
+    const profiles = await listWallProfiles();
+    const nameExists = profiles.some((profile) => profile.name.trim().toLowerCase() === payload.name.trim().toLowerCase());
+
+    if (nameExists) {
+      return NextResponse.json({ ok: false, message: "Diesen Anzeigenamen gibt es schon." }, { status: 409 });
+    }
+
     const { password: _password, ...profile } = payload;
     const createdProfile = await createWallProfile({ ...profile, handle, name: payload.name.trim() }, hashPassword(password));
     await setWallSession(createdProfile.id);
@@ -93,6 +100,19 @@ export async function PATCH(request: Request) {
 
   if (!currentProfile) {
     return NextResponse.json({ ok: false, message: "Profil wurde nicht gefunden." }, { status: 404 });
+  }
+
+  if (profilePayload.name?.trim()) {
+    const profiles = await listWallProfiles();
+    const nameExists = profiles.some(
+      (profile) =>
+        profile.id !== targetProfileId &&
+        profile.name.trim().toLowerCase() === String(profilePayload.name).trim().toLowerCase()
+    );
+
+    if (nameExists) {
+      return NextResponse.json({ ok: false, message: "Diesen Anzeigenamen gibt es schon." }, { status: 409 });
+    }
   }
 
   try {
