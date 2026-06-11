@@ -15,8 +15,11 @@ export default function FishV2Gate() {
   const [ipodTilt, setIpodTilt] = useState({ x: 0, y: 0 });
   const [radioStarted, setRadioStarted] = useState(false);
   const [radioSlot, setRadioSlot] = useState<FishRadioSlot>(() => getFishRadioSlot());
+  const [radioNow, setRadioNow] = useState(Date.now());
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
+
+  const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -28,7 +31,29 @@ export default function FishV2Gate() {
       pendingRadioStartRef.current = null;
       playSelectedTrack(nextSlot);
     }
-  }, [activeTrack, radioSlot, radioStarted]);
+  }, [activeTrack]);
+
+  useEffect(() => {
+    if (!radioStarted) return;
+
+    const interval = window.setInterval(() => {
+      const slot = getFishRadioSlot();
+      setRadioNow(Date.now());
+      setRadioSlot((current) => {
+        if (current.src === slot.src) return current;
+        pendingRadioStartRef.current = slot;
+        const nextTrackIndex = Math.max(0, tracks.findIndex((track) => track.src === slot.src));
+        if (nextTrackIndex === activeTrack) {
+          window.setTimeout(() => playSelectedTrack(slot), 0);
+        } else {
+          setActiveTrack(nextTrackIndex);
+        }
+        return slot;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [activeTrack, radioStarted]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -215,15 +240,15 @@ export default function FishV2Gate() {
                   <b />
                 </div>
                 <strong>{radioStarted ? "ON AIR" : "START RADIO"}</strong>
-                <span>{radioStarted ? (radioSlot.kind === "host" ? "Moderation" : radioSlot.artist) : "shuffle broadcast"}</span>
-                <small>{radioStarted ? (radioSlot.kind === "host" ? ".fish FM spricht" : radioSlot.title) : "press play"}</small>
+                <span>{radioStarted ? (displaySlot.kind === "host" ? "Moderation" : displaySlot.artist) : "shuffle broadcast"}</span>
+                <small>{radioStarted ? (displaySlot.kind === "host" ? ".fish FM spricht" : displaySlot.title) : "press play"}</small>
               </div>
               <div className="progress">
                 <i style={{ width: `${trackProgress}%` }} />
               </div>
               <p className="ipod-status">
                 {radioStarted
-                  ? `${isPlaying ? "On Air" : "Pause"} · ${radioSlot.kind === "host" ? "Moderation" : radioSlot.title}`
+                  ? `${isPlaying ? "On Air" : "Pause"} · ${displaySlot.kind === "host" ? "Moderation" : displaySlot.title}`
                   : "Radio wartet"}
               </p>
             </div>
