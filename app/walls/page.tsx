@@ -251,11 +251,15 @@ export default function WallsPage() {
   const [postFontStyle, setPostFontStyle] = useState("lucida");
   const audioRef = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const playerDisplayRef = useRef<HTMLSpanElement>(null);
   const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
   const previewTimeoutRef = useRef<number | null>(null);
   const resumeRadioAfterPreviewRef = useRef(false);
 
   const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
+  const playerDisplayText = radioStarted
+    ? `103.7 .fish FM · ${displaySlot.kind === "host" ? "Moderation" : `${displaySlot.title} - ${displaySlot.artist}`}`
+    : "103.7 .fish FM · Radio bereit";
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
   const viewProfile =
     profiles.find((profile) => profile.id === viewProfileId) || activeProfile || profiles.find(Boolean) || null;
@@ -457,6 +461,21 @@ export default function WallsPage() {
       // localStorage can be unavailable in private browsing; notifications still work for the session.
     }
   }, [clearedNotificationIds]);
+
+  useEffect(() => {
+    const display = playerDisplayRef.current;
+    if (!display) return;
+
+    const updateMarqueeDistance = () => {
+      const distance = Math.max(0, display.scrollWidth - display.clientWidth);
+      display.style.setProperty("--marquee-distance", `${distance}px`);
+      display.classList.toggle("scrolling", distance > 6);
+    };
+
+    updateMarqueeDistance();
+    window.addEventListener("resize", updateMarqueeDistance);
+    return () => window.removeEventListener("resize", updateMarqueeDistance);
+  }, [playerDisplayText, playerCollapsed]);
 
   useEffect(() => {
     if (!activeProfileId) return;
@@ -1593,12 +1612,8 @@ export default function WallsPage() {
             {!playerCollapsed && (
               <>
                 <strong>.fish Player</strong>
-                <span>
-                  <i>
-                    {radioStarted
-                      ? `103.7 .fish FM · ${displaySlot.kind === "host" ? "Moderation" : `${displaySlot.title} - ${displaySlot.artist}`}`
-                      : "103.7 .fish FM · Radio bereit"}
-                  </i>
+                <span ref={playerDisplayRef}>
+                  <i>{playerDisplayText}</i>
                 </span>
                 <div className="ipod-controls-mini">
                   <button className="mini-play" onClick={() => toggleMusic()}>

@@ -2409,17 +2409,21 @@ footer {
   display: inline-block;
   min-width: 100%;
   font-style: normal;
-  animation: fish-player-marquee 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+.wall-music-player span.scrolling i {
+  animation: fish-player-marquee 13s ease-in-out infinite;
 }
 
 @keyframes fish-player-marquee {
   0%, 16% {
     transform: translateX(0);
   }
-  72%, 84% {
-    transform: translateX(min(0px, calc(210px - 100%)));
+  72%, 88% {
+    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
   }
-  86%, 100% {
+  90%, 100% {
     transform: translateX(0);
   }
 }
