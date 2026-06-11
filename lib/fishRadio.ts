@@ -2,6 +2,7 @@ export type FishRadioTrack = {
   title: string;
   artist: string;
   src: string;
+  durationSeconds?: number;
 };
 
 export type FishRadioSlot = {
@@ -17,29 +18,30 @@ export type FishRadioSlot = {
 };
 
 export const fishRadioSongs: FishRadioTrack[] = [
-  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3" },
-  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3" },
-  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3" },
-  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3" },
-  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3" },
-  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3" },
-  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3" },
-  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3" },
-  { title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", src: "/music/uptown-funk.mp3" },
-  { title: "Counting Stars", artist: "OneRepublic", src: "/music/counting-stars.mp3" },
-  { title: "Rock That Body", artist: "The Black Eyed Peas", src: "/music/rock-that-body.mp3" }
+  { title: "Moment", artist: "C4RL", src: "/music/c4rl-moment.mp3", durationSeconds: 148 },
+  { title: "Party In The U.S.A.", artist: "Miley Cyrus", src: "/music/party-in-the-usa.mp3", durationSeconds: 208 },
+  { title: "The One That Got Away", artist: "Katy Perry", src: "/music/the-one-that-got-away.mp3", durationSeconds: 228 },
+  { title: "Call Me Maybe", artist: "Carly Rae Jepsen", src: "/music/call-me-maybe.mp3", durationSeconds: 194 },
+  { title: "Kids", artist: "MGMT", src: "/music/mgmt-kids.mp3", durationSeconds: 302 },
+  { title: "What Makes You Beautiful", artist: "One Direction", src: "/music/what-makes-you-beautiful.mp3", durationSeconds: 215 },
+  { title: "Beauty And A Beat", artist: "Justin Bieber ft. Nicki Minaj", src: "/music/beauty-and-a-beat.mp3", durationSeconds: 294 },
+  { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3", durationSeconds: 216 },
+  { title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", src: "/music/uptown-funk.mp3", durationSeconds: 271 },
+  { title: "Counting Stars", artist: "OneRepublic", src: "/music/counting-stars.mp3", durationSeconds: 284 },
+  { title: "Rock That Body", artist: "The Black Eyed Peas", src: "/music/rock-that-body.mp3", durationSeconds: 273 }
 ];
 
 const fishRadioHosts: FishRadioTrack[] = [
-  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-1.mp3" },
-  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-2.mp3" },
-  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-3.mp3" }
+  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-1.mp3", durationSeconds: 10 },
+  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-2.mp3", durationSeconds: 13 },
+  { title: "Moderation", artist: ".fish FM", src: "/music/fish-radio-host-3.mp3", durationSeconds: 11 }
 ];
 
-const songSlotSeconds = 96;
 const hostSlotSeconds = 14;
 const groupPattern = [2, 3, 2, 3, 1];
-const cycleSeconds = fishRadioSongs.length * songSlotSeconds + (groupPattern.length - 1) * hostSlotSeconds;
+const cycleSeconds =
+  fishRadioSongs.reduce((sum, song) => sum + (song.durationSeconds || 240), 0) +
+  (groupPattern.length - 1) * hostSlotSeconds;
 
 function seededNumber(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -55,10 +57,6 @@ function seededShuffle<T>(items: T[], seed: number) {
   return copy;
 }
 
-function songOffset(seed: number) {
-  return 18 + Math.floor(seededNumber(seed) * 52);
-}
-
 export function getFishRadioSlot(now = Date.now()): FishRadioSlot {
   const totalSeconds = Math.floor(now / 1000);
   const cycleIndex = Math.floor(totalSeconds / cycleSeconds);
@@ -72,17 +70,18 @@ export function getFishRadioSlot(now = Date.now()): FishRadioSlot {
     const groupSize = groupPattern[groupIndex];
     for (let index = 0; index < groupSize; index += 1) {
       const track = songs[songIndex];
-      if (remaining < songSlotSeconds) {
+      const songDuration = track.durationSeconds || 240;
+      if (remaining < songDuration) {
         return {
           kind: "song",
           ...track,
           elapsed: remaining,
-          duration: songSlotSeconds,
-          offset: songOffset(cycleIndex * 100 + songIndex),
-          progress: (remaining / songSlotSeconds) * 100
+          duration: songDuration,
+          offset: 0,
+          progress: (remaining / songDuration) * 100
         };
       }
-      remaining -= songSlotSeconds;
+      remaining -= songDuration;
       songIndex += 1;
     }
 
@@ -109,8 +108,8 @@ export function getFishRadioSlot(now = Date.now()): FishRadioSlot {
     kind: "song",
     ...fallback,
     elapsed: 0,
-    duration: songSlotSeconds,
-    offset: songOffset(cycleIndex),
+    duration: fallback.durationSeconds || 240,
+    offset: 0,
     progress: 0
   };
 }
@@ -123,7 +122,6 @@ export function seekSyncedRadioAudio(audio: HTMLAudioElement, slot: FishRadioSlo
   }
 
   if (duration > 0) {
-    const safeDuration = Math.max(1, duration - 3);
-    audio.currentTime = (slot.offset + slot.elapsed) % safeDuration;
+    audio.currentTime = Math.min(slot.elapsed, Math.max(0, duration - 0.2));
   }
 }

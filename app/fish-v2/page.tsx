@@ -90,6 +90,11 @@ export default function FishV2Gate() {
         .catch(() => setIsPlaying(false));
     };
 
+    if (audio.getAttribute("src") !== slot.src) {
+      audio.src = slot.src;
+      audio.load();
+    }
+
     if (audio.readyState >= 1) {
       startAudio();
       return;
@@ -260,7 +265,7 @@ export default function FishV2Gate() {
             <button type="button" disabled aria-hidden="true">FM</button>
             <button type="button" disabled aria-hidden="true">103.7</button>
             <button className="play-label" type="button" onClick={togglePlayback}>
-              {isPlaying ? "OFF" : "ON"}
+              {isPlaying ? "ON" : "OFF"}
             </button>
             <button className="center" type="button" onClick={togglePlayback}>
               <span className={`play-icon ${isPlaying ? "pause" : "play"}`} />

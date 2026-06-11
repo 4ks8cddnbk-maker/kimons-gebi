@@ -238,6 +238,11 @@ export default function Home() {
         .catch(() => setIsPlaying(false));
     };
 
+    if (audio.getAttribute("src") !== slot.src) {
+      audio.src = slot.src;
+      audio.load();
+    }
+
     if (audio.readyState >= 1) {
       startAudio();
       return;
@@ -612,7 +617,7 @@ export default function Home() {
             <button onClick={handleNext}>{ipodMode === "snake" ? "▶▶" : "FM"}</button>
             <button onClick={handlePrevious}>{ipodMode === "snake" ? "◀◀" : "103.7"}</button>
             <button className="play-label" onClick={handleBottomButton}>
-              {ipodMode === "snake" ? "DOWN" : isPlaying ? "OFF" : "ON"}
+              {ipodMode === "snake" ? "DOWN" : isPlaying ? "ON" : "OFF"}
             </button>
             <button className="center" onClick={togglePlayback}>
               <span className={`play-icon ${ipodMode === "snake" ? (snakeRunning ? "pause" : "play") : isPlaying ? "pause" : "play"}`} />

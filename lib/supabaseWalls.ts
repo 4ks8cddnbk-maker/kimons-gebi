@@ -41,6 +41,7 @@ export type SupabaseProfile = {
   layoutDensity: string;
   verified: boolean;
   photos: string[];
+  createdAt: string;
 };
 
 export type SupabaseFollow = {
@@ -143,7 +144,8 @@ function toProfile(row: ProfileRow): SupabaseProfile {
     fontStyle: row.font_style || "lucida",
     layoutDensity: row.layout_density || "cozy",
     verified: Boolean(row.verified),
-    photos: row.photos || []
+    photos: row.photos || [],
+    createdAt: row.created_at || new Date(0).toISOString()
   };
 }
 

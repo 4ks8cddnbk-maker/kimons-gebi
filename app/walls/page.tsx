@@ -47,6 +47,7 @@ type Profile = {
   layoutDensity: string;
   verified: boolean;
   photos: string[];
+  createdAt: string;
 };
 
 type Follow = {
@@ -136,17 +137,6 @@ function relativeTimeLabel(value: string) {
 
 function isReplyComment(comment: WallComment) {
   return comment.text.startsWith(replyPrefix);
-}
-
-function getReplyParentId(comment: WallComment) {
-  if (!isReplyComment(comment)) return "";
-  return comment.text.slice(replyPrefix.length).split(":")[0] || "";
-}
-
-function getReplyText(comment: WallComment) {
-  if (!isReplyComment(comment)) return comment.text;
-  const withoutPrefix = comment.text.slice(replyPrefix.length);
-  return withoutPrefix.slice(withoutPrefix.indexOf(":") + 1);
 }
 
 function ReactionIcon({ type }: { type: string }) {
@@ -250,8 +240,6 @@ export default function WallsPage() {
   const [showOlderNotifications, setShowOlderNotifications] = useState(false);
   const [clearedNotificationIds, setClearedNotificationIds] = useState<string[]>([]);
   const [highlightedPostId, setHighlightedPostId] = useState("");
-  const [replyComposerCommentId, setReplyComposerCommentId] = useState("");
-  const [expandedReplyComments, setExpandedReplyComments] = useState<string[]>([]);
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [activeTrack, setActiveTrack] = useState(0);
@@ -299,13 +287,6 @@ export default function WallsPage() {
       return groups;
     }, {});
   }, [comments]);
-  const repliesByComment = useMemo(() => {
-    return comments.filter(isReplyComment).reduce<Record<string, WallComment[]>>((groups, comment) => {
-      const parentId = getReplyParentId(comment);
-      groups[parentId] = [...(groups[parentId] || []), comment];
-      return groups;
-    }, {});
-  }, [comments]);
   const reactionCommentsByPost = useMemo(() => {
     return comments.filter((comment) => comment.text.startsWith(reactionPrefix)).reduce<Record<string, WallComment[]>>((groups, comment) => {
       groups[comment.postId] = [...(groups[comment.postId] || []), comment];
@@ -341,6 +322,16 @@ export default function WallsPage() {
           createdAt: post.createdAt
         };
       });
+    const profileNotes = profiles
+      .filter((profile) => profile.id !== activeProfile.id && profile.createdAt)
+      .map((profile) => ({
+        id: `profile-${profile.id}`,
+        category: "follows",
+        text: `${profile.name} ist jetzt auch auf .fish! Sag hallo.`,
+        profileId: profile.id,
+        postId: "",
+        createdAt: profile.createdAt
+      }));
     const commentNotes = comments
       .filter((comment) => {
         const post = posts.find((item) => item.id === comment.postId);
@@ -354,23 +345,6 @@ export default function WallsPage() {
           category: "comments",
           text: `${author?.name || "Jemand"} hat dein .fish kommentiert.`,
           profileId: post?.targetId || post?.authorId || comment.authorId,
-          postId: comment.postId,
-          createdAt: comment.createdAt
-        };
-      });
-    const replyNotes = comments
-      .filter((comment) => {
-        if (!isReplyComment(comment) || comment.authorId === activeProfile.id) return false;
-        const parent = comments.find((item) => item.id === getReplyParentId(comment));
-        return parent?.authorId === activeProfile.id;
-      })
-      .map((comment) => {
-        const author = profiles.find((profile) => profile.id === comment.authorId);
-        return {
-          id: `reply-${comment.id}`,
-          category: "comments",
-          text: `${author?.name || "Jemand"} hat auf deinen Kommentar geantwortet.`,
-          profileId: posts.find((item) => item.id === comment.postId)?.targetId || "",
           postId: comment.postId,
           createdAt: comment.createdAt
         };
@@ -394,7 +368,7 @@ export default function WallsPage() {
         };
       });
 
-    return [...reactionNotes, ...replyNotes, ...commentNotes, ...collabNotes, ...followNotes]
+    return [...reactionNotes, ...commentNotes, ...collabNotes, ...followNotes, ...profileNotes]
       .filter((note) => !clearedNotificationIds.includes(note.id))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [activeProfile, clearedNotificationIds, comments, follows, posts, profiles]);
@@ -674,7 +648,8 @@ export default function WallsPage() {
       fontStyle: String(formData.get("fontStyle") || "lucida"),
       layoutDensity: String(formData.get("layoutDensity") || "cozy"),
       verified: false,
-      photos: []
+      photos: [],
+      createdAt: new Date().toISOString()
     };
 
     const response = await fetch("/api/walls/profiles", {
@@ -970,32 +945,6 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
-  async function addReply(event: FormEvent<HTMLFormElement>, postId: string, parentCommentId: string) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const text = String(formData.get("reply") || "").trim();
-
-    if (!text) return;
-
-    const response = await fetch("/api/walls/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId, text: `${replyPrefix}${parentCommentId}:${text}` })
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      notify(data.message || "Antwort konnte nicht gespeichert werden.");
-      return;
-    }
-
-    form.reset();
-    setReplyComposerCommentId("");
-    setExpandedReplyComments((current) => [...new Set([...current, parentCommentId])]);
-    notify("Antwort gespeichert.");
-    await loadWalls(false);
-  }
 
   async function reactToPost(postId: string, reaction: string) {
     const post = posts.find((item) => item.id === postId);
@@ -1180,6 +1129,11 @@ export default function WallsPage() {
         })
         .catch(() => setIsPlaying(false));
     };
+
+    if (audio.getAttribute("src") !== slot.src) {
+      audio.src = slot.src;
+      audio.load();
+    }
 
     if (audio.readyState >= 1) {
       startAudio();
@@ -1386,7 +1340,7 @@ export default function WallsPage() {
             </button>
           </div>
         )}
-        <p>{post.text}</p>
+        {post.postType !== "song" && <p>{post.text}</p>}
         <span>{new Date(post.createdAt).toLocaleString("de-DE")}</span>
 
         <div className="fish-reactions">
@@ -1430,63 +1384,12 @@ export default function WallsPage() {
         <div className="fish-comments">
           {postComments.map((comment) => {
             const commentAuthor = profiles.find((profile) => profile.id === comment.authorId);
-            const replies = repliesByComment[comment.id] || [];
-            const visibleReplies = replies.length <= 1 || expandedReplyComments.includes(comment.id) ? replies : replies.slice(0, 1);
             return (
-              <div className="comment-thread" key={comment.id}>
-                <div className="fish-comment">
-                  <button type="button" onClick={() => openProfile(commentAuthor?.id)}>
-                    {commentAuthor?.name || "Unbekannt"} {renderVerified(commentAuthor)}
-                  </button>
-                  <span>{comment.text}</span>
-                  {activeProfile && (
-                    <button
-                      className="comment-reply-link"
-                      type="button"
-                      onClick={() => setReplyComposerCommentId((current) => (current === comment.id ? "" : comment.id))}
-                    >
-                      antworten
-                    </button>
-                  )}
-                </div>
-                {visibleReplies.length > 0 && (
-                  <div className="comment-replies">
-                    {visibleReplies.map((reply) => {
-                      const replyAuthor = profiles.find((profile) => profile.id === reply.authorId);
-                      return (
-                        <div className="fish-comment reply-comment" key={reply.id}>
-                          <button type="button" onClick={() => openProfile(replyAuthor?.id)}>
-                            {replyAuthor?.name || "Unbekannt"} {renderVerified(replyAuthor)}
-                          </button>
-                          <span>{getReplyText(reply)}</span>
-                        </div>
-                      );
-                    })}
-                    {replies.length > 1 && (
-                      <button
-                        className="comment-reply-toggle"
-                        type="button"
-                        onClick={() =>
-                          setExpandedReplyComments((current) =>
-                            current.includes(comment.id)
-                              ? current.filter((id) => id !== comment.id)
-                              : [...current, comment.id]
-                          )
-                        }
-                      >
-                        {expandedReplyComments.includes(comment.id)
-                          ? "Antworten einklappen"
-                          : `${replies.length - 1} weitere Antwort${replies.length - 1 === 1 ? "" : "en"}`}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {replyComposerCommentId === comment.id && (
-                  <form className="comment-form reply-form" onSubmit={(event) => addReply(event, post.id, comment.id)}>
-                    <input name="reply" placeholder="Kurz antworten..." />
-                    <button>Senden</button>
-                  </form>
-                )}
+              <div className="fish-comment" key={comment.id}>
+                <button type="button" onClick={() => openProfile(commentAuthor?.id)}>
+                  {commentAuthor?.name || "Unbekannt"} {renderVerified(commentAuthor)}
+                </button>
+                <span>{comment.text}</span>
               </div>
             );
           })}
@@ -1517,7 +1420,8 @@ export default function WallsPage() {
     fontStyle: "lucida",
     layoutDensity: "cozy",
     verified: true,
-    photos: []
+    photos: [],
+    createdAt: new Date(0).toISOString()
   };
 
   return (
@@ -1620,7 +1524,7 @@ export default function WallsPage() {
                 type="button"
                 onClick={() => setShowCreateFish((value) => !value)}
               >
-                {showCreateFish ? ".fish erstellen schließen" : "Neues .fish erstellen"}
+                {showCreateFish ? ".fish Account schließen" : "Neuen .fish Account"}
               </button>
 
               {showCreateFish && (

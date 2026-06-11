@@ -3444,11 +3444,13 @@ footer {
 
 .post-song {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
   align-items: center;
   gap: 14px;
-  margin: 18px 0 16px;
-  padding: 18px;
+  margin: 18px auto 18px;
+  padding: 24px 20px;
+  width: min(100%, 620px);
   color: #213047;
   background:
     radial-gradient(circle at 12% 16%, rgba(255, 255, 255, 0.9), transparent 28%),
@@ -3463,6 +3465,7 @@ footer {
   display: grid;
   gap: 5px;
   min-width: 0;
+  text-align: center;
 }
 
 .post-song small {
@@ -3755,50 +3758,6 @@ footer {
   background: rgba(255, 255, 255, 0.54);
   border: 1px solid rgba(174, 185, 200, 0.58);
   border-radius: 7px;
-}
-
-.comment-thread {
-  display: grid;
-  gap: 6px;
-}
-
-.comment-replies {
-  display: grid;
-  gap: 5px;
-  margin-left: 22px;
-  padding-left: 10px;
-  border-left: 2px solid rgba(102, 185, 241, 0.3);
-}
-
-.reply-comment {
-  opacity: 0.92;
-  background: rgba(255, 255, 255, 0.42);
-}
-
-.comment-reply-link,
-.comment-reply-toggle {
-  min-height: 0;
-  padding: 0;
-  color: #637188;
-  font-size: 10px;
-  font-weight: 900;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
-
-.comment-reply-link {
-  opacity: 0.68;
-}
-
-.comment-reply-link:hover,
-.comment-reply-toggle:hover {
-  color: #1f6fa8;
-  opacity: 1;
-}
-
-.reply-form {
-  margin-left: 22px;
 }
 
 .delete-post-button {
