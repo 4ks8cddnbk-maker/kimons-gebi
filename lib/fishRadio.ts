@@ -28,7 +28,8 @@ export const fishRadioSongs: FishRadioTrack[] = [
   { title: "TiK ToK", artist: "Ke$ha", src: "/music/tik-tok.mp3", durationSeconds: 216 },
   { title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", src: "/music/uptown-funk.mp3", durationSeconds: 271 },
   { title: "Counting Stars", artist: "OneRepublic", src: "/music/counting-stars.mp3", durationSeconds: 284 },
-  { title: "Rock That Body", artist: "The Black Eyed Peas", src: "/music/rock-that-body.mp3", durationSeconds: 273 }
+  { title: "Rock That Body", artist: "The Black Eyed Peas", src: "/music/rock-that-body.mp3", durationSeconds: 273 },
+  { title: "Just Dance", artist: "Lady Gaga ft. Colby O'Donis", src: "/music/just-dance.mp3", durationSeconds: 253 }
 ];
 
 const fishRadioHosts: FishRadioTrack[] = [
