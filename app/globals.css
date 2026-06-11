@@ -2391,6 +2391,7 @@ footer {
 
 .wall-music-player span {
   grid-column: 1 / -1;
+  position: relative;
   min-height: 38px;
   padding: 8px 10px;
   color: #26394f;
@@ -2402,6 +2403,25 @@ footer {
   border: 2px solid #222936;
   border-radius: 8px;
   box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.28);
+}
+
+.wall-music-player span i {
+  display: inline-block;
+  min-width: 100%;
+  font-style: normal;
+  animation: fish-player-marquee 11s ease-in-out infinite;
+}
+
+@keyframes fish-player-marquee {
+  0%, 16% {
+    transform: translateX(0);
+  }
+  72%, 84% {
+    transform: translateX(min(0px, calc(210px - 100%)));
+  }
+  86%, 100% {
+    transform: translateX(0);
+  }
 }
 
 .wall-music-player div {
@@ -3447,10 +3467,10 @@ footer {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   align-items: center;
-  gap: 14px;
-  margin: 18px auto 18px;
-  padding: 24px 20px;
-  width: min(100%, 620px);
+  gap: 12px;
+  margin: 16px 0 14px;
+  padding: 16px;
+  width: 100%;
   color: #213047;
   background:
     radial-gradient(circle at 12% 16%, rgba(255, 255, 255, 0.9), transparent 28%),
@@ -3458,7 +3478,7 @@ footer {
     linear-gradient(#fbfdff, #dce7f4 54%, #edf6ff);
   border: 1px solid #aeb9c8;
   border-radius: 14px;
-  box-shadow: inset 0 1px 0 #fff, 0 12px 24px rgba(23, 40, 68, 0.1);
+  box-shadow: inset 0 1px 0 #fff;
 }
 
 .post-song div {
@@ -3760,7 +3780,8 @@ footer {
   border-radius: 7px;
 }
 
-.delete-post-button {
+button.delete-post-button,
+.wall-post button.delete-post-button {
   position: absolute;
   top: 7px;
   right: 10px;
@@ -3777,6 +3798,12 @@ footer {
   border-radius: 999px;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62), 0 5px 12px rgba(168, 31, 45, 0.18);
+}
+
+button.delete-post-button:hover,
+.wall-post button.delete-post-button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .older-posts-toggle {

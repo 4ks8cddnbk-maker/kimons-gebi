@@ -58,6 +58,7 @@ type Follow = {
 
 const reactionPrefix = "__reaction__:";
 const replyPrefix = "__reply__:";
+const clearedNotificationsStorageKey = "fish-cleared-notifications-v1";
 const reactionOptions = [
   { key: "thumbs-up", label: "Daumen hoch" },
   { key: "wow", label: "Erstaunt" },
@@ -227,7 +228,6 @@ export default function WallsPage() {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [newFishOpen, setNewFishOpen] = useState(false);
-  const [fishType, setFishType] = useState<"text" | "image" | "song">("text");
   const [postMode, setPostMode] = useState<"pin" | "collab">("pin");
   const [showFishPage, setShowFishPage] = useState(true);
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
@@ -435,6 +435,28 @@ export default function WallsPage() {
   useEffect(() => {
     loadWalls();
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(clearedNotificationsStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setClearedNotificationIds(parsed.filter((id) => typeof id === "string"));
+        }
+      }
+    } catch {
+      setClearedNotificationIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(clearedNotificationsStorageKey, JSON.stringify(clearedNotificationIds));
+    } catch {
+      // localStorage can be unavailable in private browsing; notifications still work for the session.
+    }
+  }, [clearedNotificationIds]);
 
   useEffect(() => {
     if (!activeProfileId) return;
@@ -785,35 +807,7 @@ export default function WallsPage() {
     return true;
   }
 
-  async function pinText(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const text = String(formData.get("text") || "").trim();
-    const collaboratorId = String(formData.get("collaboratorId") || "");
-    const fontStyle = String(formData.get("postFontStyle") || "lucida");
-
-    if (!text) return;
-
-    notify(".fish wird gespeichert...");
-    const saved = await createPost(
-      {
-        postType: "text",
-        text,
-        sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab .fish" : "Text .fish"}`,
-        color: String(formData.get("color") || "#ffffff")
-      } as WallPost,
-      postMode,
-      collaboratorId
-    );
-    if (saved) {
-      notify("Text-.fish ist im Feed.");
-      form.reset();
-      setNewFishOpen(false);
-    }
-  }
-
-  async function pinImage(event: FormEvent<HTMLFormElement>) {
+  async function postFish(event: FormEvent<HTMLFormElement>) {
     if (!viewProfile || !activeProfile) return;
 
     event.preventDefault();
@@ -821,65 +815,43 @@ export default function WallsPage() {
     const formData = new FormData(form);
     const file = formData.get("image");
     const text = String(formData.get("text") || "").trim();
+    const trackValue = String(formData.get("track") || "");
+    const track = trackValue === "" ? null : tracks[Number(trackValue)];
     const collaboratorId = String(formData.get("collaboratorId") || "");
     const fontStyle = String(formData.get("postFontStyle") || "lucida");
+    const hasImage = file instanceof File && file.size > 0;
+    const hasSong = Boolean(track);
 
-    if (!(file instanceof File) || !file.size) {
-      notify("Bitte ein Bild auswählen.");
+    if (!text && !hasImage && !hasSong) {
+      notify("Dein .fish braucht Text, Bild oder Song.");
       return;
     }
 
-    notify("Bild-.fish wird hochgeladen...");
+    notify(".fish wird gespeichert...");
 
     try {
-      const upload = await uploadFiles([file], "pin");
+      const upload = hasImage ? await uploadFiles([file as File], "pin") : { urls: [] as string[] };
       const saved = await createPost(
         {
-          postType: "image",
-          text: text || "Bild-.fish",
-          sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab .fish" : "Bild .fish"}`,
+          postType: "fish",
+          text,
+          sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab .fish" : ".fish"}`,
           color: String(formData.get("color") || "#ffffff"),
-          mediaUrl: upload.urls[0]
+          mediaUrl: upload.urls[0] || "",
+          songTitle: track?.title || "",
+          songArtist: track?.artist || "",
+          songSrc: track?.src || ""
         } as WallPost,
         postMode,
         collaboratorId
       );
       if (saved) {
-        notify("Bild-.fish ist im Feed.");
+        notify(".fish ist im Feed.");
         form.reset();
         setNewFishOpen(false);
       }
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Bild-.fish konnte nicht gespeichert werden.");
-    }
-  }
-
-  async function pinSong(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const track = tracks[Number(formData.get("track")) || 0];
-    const collaboratorId = String(formData.get("collaboratorId") || "");
-    const fontStyle = String(formData.get("postFontStyle") || "lucida");
-
-    notify("Song wird als .fish gepinnt...");
-    const saved = await createPost(
-      {
-        postType: "song",
-        text: String(formData.get("text") || `${track.title} - ${track.artist}`),
-        sticker: `font:${fontStyle}|${postMode === "collab" ? "Collab Song" : "Song .fish"}`,
-        color: String(formData.get("color") || "#eef6ff"),
-        songTitle: track.title,
-        songArtist: track.artist,
-        songSrc: track.src
-      } as WallPost,
-      postMode,
-      collaboratorId
-    );
-    if (saved) {
-      notify("Song-.fish ist im Feed.");
-      form.reset();
-      setNewFishOpen(false);
+      notify(error instanceof Error ? error.message : ".fish konnte nicht gespeichert werden.");
     }
   }
 
@@ -1297,7 +1269,7 @@ export default function WallsPage() {
     return (
       <article
         id={`fish-post-${post.id}`}
-        className={`wall-post post-${post.postType} ${post.postType === "image" ? "image-wall-post" : ""} ${
+        className={`wall-post post-${post.postType} ${post.mediaUrl ? "image-wall-post" : ""} ${
           highlightedPostId === post.id ? "highlighted" : ""
         } font-${postFont}`}
         key={post.id}
@@ -1322,12 +1294,12 @@ export default function WallsPage() {
             .fish loeschen
           </button>
         )}
-        {post.postType === "image" && post.mediaUrl && (
+        {post.mediaUrl && (
           <figure className="post-image-frame">
             <img className="post-image" src={post.mediaUrl} alt={post.text || "Bild-.fish"} />
           </figure>
         )}
-        {post.postType === "song" && (
+        {post.songSrc && (
           <div className="post-song">
             <div>
               <small>10 Sekunden Preview</small>
@@ -1340,7 +1312,7 @@ export default function WallsPage() {
             </button>
           </div>
         )}
-        {post.postType !== "song" && <p>{post.text}</p>}
+        {post.text && <p>{post.text}</p>}
         <span>{new Date(post.createdAt).toLocaleString("de-DE")}</span>
 
         <div className="fish-reactions">
@@ -1622,9 +1594,11 @@ export default function WallsPage() {
               <>
                 <strong>.fish Player</strong>
                 <span>
-                  {radioStarted
-                    ? `103.7 .fish FM · ${displaySlot.kind === "host" ? "Moderation" : displaySlot.title}`
-                    : "103.7 .fish FM · Radio bereit"}
+                  <i>
+                    {radioStarted
+                      ? `103.7 .fish FM · ${displaySlot.kind === "host" ? "Moderation" : `${displaySlot.title} - ${displaySlot.artist}`}`
+                      : "103.7 .fish FM · Radio bereit"}
+                  </i>
                 </span>
                 <div className="ipod-controls-mini">
                   <button className="mini-play" onClick={() => toggleMusic()}>
@@ -1931,17 +1905,6 @@ export default function WallsPage() {
                   <strong>Neues .fish</strong>
                 </div>
                 <div className="fish-modal-body">
-                  <div className="fish-type-tabs">
-                    <button className={fishType === "text" ? "active" : ""} type="button" onClick={() => setFishType("text")}>
-                      Text
-                    </button>
-                    <button className={fishType === "image" ? "active" : ""} type="button" onClick={() => setFishType("image")}>
-                      Bild
-                    </button>
-                    <button className={fishType === "song" ? "active" : ""} type="button" onClick={() => setFishType("song")}>
-                      Song
-                    </button>
-                  </div>
                   <div className="fish-mode-tabs">
                     <button
                       className={postMode === "pin" ? "active" : ""}
@@ -1963,67 +1926,34 @@ export default function WallsPage() {
                     Eigener Feed heißt: du postest auf deinem Profil. Collab heißt: ein gemeinsames .fish mit Top-Freunden.
                   </p>
 
-                  {fishType === "text" && (
-                    <form className="pin-form" onSubmit={pinText}>
-                      {renderCollabSelect()}
-                      {renderPostOptions()}
-                      <label>
-                        Text-.fish
-                        <textarea name="text" placeholder="Schreib etwas in deinen Feed" required />
-                      </label>
-                      <label>
-                        Farbe
-                        <input name="color" type="color" defaultValue="#ffffff" />
-                      </label>
-                      <button className="aqua-button">Text-.fish posten</button>
-                    </form>
-                  )}
-
-                  {fishType === "image" && (
-                    <form className="pin-form" onSubmit={pinImage}>
-                      {renderCollabSelect()}
-                      {renderPostOptions()}
-                      <label>
-                        Bild-.fish
-                        <input name="image" type="file" accept="image/*" required />
-                      </label>
-                      <label>
-                        Caption
-                        <input name="text" placeholder="Kurzer Text zum Bild" />
-                      </label>
-                      <label>
-                        Farbe
-                        <input name="color" type="color" defaultValue="#fff8dc" />
-                      </label>
-                      <button className="aqua-button">Bild-.fish posten</button>
-                    </form>
-                  )}
-
-                  {fishType === "song" && (
-                    <form className="pin-form" onSubmit={pinSong}>
-                      {renderCollabSelect()}
-                      {renderPostOptions()}
-                      <label>
-                        Song-.fish
-                        <select name="track" defaultValue="0">
-                          {tracks.map((track, index) => (
-                            <option value={index} key={track.src}>
-                              {track.title} - {track.artist}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Kommentar
-                        <input name="text" placeholder="Warum dieser Song?" />
-                      </label>
-                      <label>
-                        Farbe
-                        <input name="color" type="color" defaultValue="#eef6ff" />
-                      </label>
-                      <button className="aqua-button">Song-.fish posten</button>
-                    </form>
-                  )}
+                  <form className="pin-form" onSubmit={postFish}>
+                    {renderCollabSelect()}
+                    {renderPostOptions()}
+                    <label>
+                      Bild hinzufügen
+                      <input name="image" type="file" accept="image/*" />
+                    </label>
+                    <label>
+                      Song hinzufügen
+                      <select name="track" defaultValue="">
+                        <option value="">Kein Song</option>
+                        {tracks.map((track, index) => (
+                          <option value={index} key={track.src}>
+                            {track.title} - {track.artist}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Text
+                      <textarea name="text" placeholder="Schreib etwas in deinen Feed" />
+                    </label>
+                    <label>
+                      Farbe
+                      <input name="color" type="color" defaultValue="#ffffff" />
+                    </label>
+                    <button className="aqua-button">.fish posten</button>
+                  </form>
 
                   <button className="secondary-button modal-close" type="button" onClick={() => setNewFishOpen(false)}>
                     Schliessen
