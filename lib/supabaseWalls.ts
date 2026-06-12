@@ -360,6 +360,12 @@ export async function listWallComments() {
   return rows.map(toComment);
 }
 
+export async function getWallComment(id: string) {
+  const response = await supabaseRest(`wall_comments?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+  const rows = (await response.json()) as CommentRow[];
+  return rows[0] ? toComment(rows[0]) : null;
+}
+
 export async function createWallComment(comment: Omit<SupabaseWallComment, "id" | "createdAt">) {
   const response = await supabaseRest("wall_comments", {
     method: "POST",
@@ -373,6 +379,13 @@ export async function createWallComment(comment: Omit<SupabaseWallComment, "id" 
   });
   const rows = (await response.json()) as CommentRow[];
   return toComment(rows[0]);
+}
+
+export async function deleteWallComment(id: string) {
+  await supabaseRest(`wall_comments?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
 }
 
 export async function deleteWallReactionComments(postId: string, authorId: string) {

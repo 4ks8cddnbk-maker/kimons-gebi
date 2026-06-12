@@ -936,6 +936,23 @@ export default function WallsPage() {
     await loadWalls(false);
   }
 
+  async function deleteComment(commentId: string) {
+    const response = await fetch("/api/walls/comments", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commentId })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      notify(data.message || "Kommentar konnte nicht geloescht werden.");
+      return;
+    }
+
+    notify("Kommentar geloescht.");
+    await loadWalls(false);
+  }
+
 
   async function reactToPost(postId: string, reaction: string) {
     const post = posts.find((item) => item.id === postId);
@@ -1381,6 +1398,11 @@ export default function WallsPage() {
                   {commentAuthor?.name || "Unbekannt"} {renderVerified(commentAuthor)}
                 </button>
                 <span>{comment.text}</span>
+                {comment.authorId === activeProfile?.id && (
+                  <button className="comment-delete-button" type="button" onClick={() => deleteComment(comment.id)}>
+                    löschen
+                  </button>
+                )}
               </div>
             );
           })}
