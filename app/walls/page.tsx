@@ -1,8 +1,8 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { fishRadioSongs as tracks, getFishRadioSlot, seekSyncedRadioAudio, type FishRadioSlot } from "@/lib/fishRadio";
+import { fishRadioSongs as tracks } from "@/lib/fishRadio";
 
 type WallPost = {
   id: string;
@@ -230,7 +230,6 @@ export default function WallsPage() {
   const [newFishOpen, setNewFishOpen] = useState(false);
   const [postMode, setPostMode] = useState<"pin" | "collab">("pin");
   const [showFishPage, setShowFishPage] = useState(true);
-  const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [followPulse, setFollowPulse] = useState(false);
   const [showOlderPosts, setShowOlderPosts] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -242,24 +241,7 @@ export default function WallsPage() {
   const [highlightedPostId, setHighlightedPostId] = useState("");
   const [loginHandle, setLoginHandle] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [activeTrack, setActiveTrack] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [radioStarted, setRadioStarted] = useState(false);
-  const [radioSlot, setRadioSlot] = useState<FishRadioSlot>(() => getFishRadioSlot());
-  const [radioNow, setRadioNow] = useState(Date.now());
-  const [previewingSongSrc, setPreviewingSongSrc] = useState("");
   const [postFontStyle, setPostFontStyle] = useState("lucida");
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const previewAudioRef = useRef<HTMLAudioElement>(null);
-  const playerDisplayRef = useRef<HTMLSpanElement>(null);
-  const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
-  const previewTimeoutRef = useRef<number | null>(null);
-  const resumeRadioAfterPreviewRef = useRef(false);
-
-  const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
-  const playerDisplayText = radioStarted
-    ? `103.7 .fish FM · ${displaySlot.kind === "host" ? "Moderation" : `${displaySlot.title} - ${displaySlot.artist}`}`
-    : "103.7 .fish FM · Radio bereit";
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
   const viewProfile =
     profiles.find((profile) => profile.id === viewProfileId) || activeProfile || profiles.find(Boolean) || null;
@@ -463,21 +445,6 @@ export default function WallsPage() {
   }, [clearedNotificationIds]);
 
   useEffect(() => {
-    const display = playerDisplayRef.current;
-    if (!display) return;
-
-    const updateMarqueeDistance = () => {
-      const distance = Math.max(0, display.scrollWidth - display.clientWidth);
-      display.style.setProperty("--marquee-distance", `${distance}px`);
-      display.classList.toggle("scrolling", distance > 6);
-    };
-
-    updateMarqueeDistance();
-    window.addEventListener("resize", updateMarqueeDistance);
-    return () => window.removeEventListener("resize", updateMarqueeDistance);
-  }, [playerDisplayText, playerCollapsed]);
-
-  useEffect(() => {
     if (!activeProfileId) return;
 
     const interval = window.setInterval(() => {
@@ -496,39 +463,6 @@ export default function WallsPage() {
       setPostMode("pin");
     }
   }, [hasCollabTarget, postMode]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (pendingRadioStartRef.current || radioStarted) {
-      const nextSlot = pendingRadioStartRef.current || radioSlot;
-      pendingRadioStartRef.current = null;
-      playSelectedTrack(nextSlot);
-    }
-  }, [activeTrack]);
-
-  useEffect(() => {
-    if (!radioStarted) return;
-
-    const interval = window.setInterval(() => {
-      const slot = getFishRadioSlot();
-      setRadioNow(Date.now());
-      setRadioSlot((current) => {
-        if (current.src === slot.src) return current;
-        pendingRadioStartRef.current = slot;
-        const nextTrackIndex = Math.max(0, tracks.findIndex((track) => track.src === slot.src));
-        if (nextTrackIndex === activeTrack) {
-          window.setTimeout(() => playSelectedTrack(slot), 0);
-        } else {
-          setActiveTrack(nextTrackIndex);
-        }
-        return slot;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(interval);
-  }, [activeTrack, radioStarted]);
 
   async function loadWalls(showSpinner = true) {
     if (showSpinner) setLoading(true);
@@ -1122,137 +1056,6 @@ export default function WallsPage() {
     setNotificationsOpen(true);
   }
 
-  function playSelectedTrack(slot = getFishRadioSlot()) {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const startAudio = () => {
-      seekSyncedRadioAudio(audio, slot);
-
-      audio
-        .play()
-        .then(() => {
-          setIsPlaying(!audio.muted);
-          setRadioStarted(true);
-        })
-        .catch(() => setIsPlaying(false));
-    };
-
-    if (audio.getAttribute("src") !== slot.src) {
-      audio.src = slot.src;
-      audio.load();
-    }
-
-    if (audio.readyState >= 1) {
-      startAudio();
-      return;
-    }
-
-    audio.addEventListener("loadedmetadata", startAudio, { once: true });
-    audio.load();
-  }
-
-  function startRadio() {
-    const slot = getFishRadioSlot();
-    const trackIndex = tracks.findIndex((track) => track.src === slot.src);
-    setRadioSlot(slot);
-    pendingRadioStartRef.current = slot;
-
-    if (trackIndex === activeTrack) {
-      pendingRadioStartRef.current = null;
-      playSelectedTrack(slot);
-      return;
-    }
-
-    setActiveTrack(Math.max(0, trackIndex));
-  }
-
-  function toggleMusic(src?: string) {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (src) {
-      playFishSnippet(src);
-      return;
-    }
-
-    if (audio.paused) {
-      startRadio();
-      return;
-    }
-
-    audio.muted = !audio.muted;
-    setIsPlaying(!audio.muted);
-  }
-
-  function playFishSnippet(src: string) {
-    const previewAudio = previewAudioRef.current;
-    const radioAudio = audioRef.current;
-    if (!previewAudio) return;
-
-    if (!previewAudio.paused && previewingSongSrc === src) {
-      previewAudio.pause();
-      previewAudio.currentTime = 0;
-      setPreviewingSongSrc("");
-      if (resumeRadioAfterPreviewRef.current && radioAudio) {
-        radioAudio.muted = false;
-        setIsPlaying(true);
-      }
-      resumeRadioAfterPreviewRef.current = false;
-      return;
-    }
-
-    if (previewTimeoutRef.current) {
-      window.clearTimeout(previewTimeoutRef.current);
-    }
-
-    resumeRadioAfterPreviewRef.current = Boolean(radioAudio && !radioAudio.paused && !radioAudio.muted);
-    if (radioAudio && !radioAudio.paused) {
-      radioAudio.muted = true;
-      setIsPlaying(false);
-    }
-
-    previewAudio.pause();
-    previewAudio.src = src;
-    previewAudio.volume = 0.95;
-    setPreviewingSongSrc(src);
-
-    const startSnippet = () => {
-      if (Number.isFinite(previewAudio.duration) && previewAudio.duration > 30) {
-        previewAudio.currentTime = Math.floor(Math.random() * Math.max(1, previewAudio.duration - 14));
-      }
-      previewAudio.play().catch(() => setPreviewingSongSrc(""));
-      previewTimeoutRef.current = window.setTimeout(() => {
-        previewAudio.pause();
-        previewAudio.currentTime = 0;
-        setPreviewingSongSrc("");
-        if (resumeRadioAfterPreviewRef.current && radioAudio) {
-          radioAudio.muted = false;
-          setIsPlaying(true);
-        }
-        resumeRadioAfterPreviewRef.current = false;
-      }, 10_000);
-    };
-
-    if (previewAudio.readyState >= 1) {
-      startSnippet();
-      return;
-    }
-
-    previewAudio.addEventListener("loadedmetadata", startSnippet, { once: true });
-    previewAudio.load();
-  }
-
-  function nextTrack() {
-    const slot = getFishRadioSlot();
-    if (slot.kind === "host" && slot.src === radioSlot.src) {
-      window.setTimeout(startRadio, Math.max(400, (slot.duration - slot.elapsed) * 1000 + 150));
-      return;
-    }
-
-    startRadio();
-  }
-
   const wallStyle =
     viewProfile &&
     ({
@@ -1338,14 +1141,11 @@ export default function WallsPage() {
         {post.songSrc && (
           <div className="post-song">
             <div>
-              <small>10 Sekunden Preview</small>
+              <small>Song</small>
               <b>
                 {post.songTitle} - {post.songArtist}
               </b>
             </div>
-            <button onClick={() => toggleMusic(post.songSrc)}>
-              {previewingSongSrc === post.songSrc ? "Stop" : "Abspielen"}
-            </button>
           </div>
         )}
         {post.text && <p>{post.text}</p>}
@@ -1439,28 +1239,6 @@ export default function WallsPage() {
 
   return (
     <main className="walls-page">
-      <audio
-        ref={audioRef}
-        src={radioSlot.src}
-        onEnded={nextTrack}
-        onTimeUpdate={() => {
-          const slot = getFishRadioSlot();
-          if (slot.src !== radioSlot.src) {
-            const trackIndex = tracks.findIndex((track) => track.src === slot.src);
-            setRadioSlot(slot);
-            if (trackIndex !== activeTrack) {
-              pendingRadioStartRef.current = slot;
-              setActiveTrack(Math.max(0, trackIndex));
-            }
-          }
-        }}
-        onPlay={() => {
-          setIsPlaying(!audioRef.current?.muted);
-          setRadioStarted(true);
-        }}
-        onPause={() => setIsPlaying(false)}
-      />
-      <audio ref={previewAudioRef} onEnded={() => setPreviewingSongSrc("")} />
       <nav className="topbar fish-topbar" aria-label=".fish Navigation">
         <div>
           <button className="fish-orb-brand" type="button" onClick={openFishPage}>
@@ -1622,30 +1400,6 @@ export default function WallsPage() {
 
       {activeProfile && viewProfile && (
         <>
-          <aside className={`wall-music-player ${playerCollapsed ? "collapsed" : ""}`}>
-            <button
-              className="player-collapse"
-              type="button"
-              onClick={() => setPlayerCollapsed((value) => !value)}
-              aria-label={playerCollapsed ? "Player ausklappen" : "Player einklappen"}
-            >
-              {playerCollapsed ? "▲" : "▼"}
-            </button>
-            {!playerCollapsed && (
-              <>
-                <strong>.fish Player</strong>
-                <span ref={playerDisplayRef}>
-                  <i>{playerDisplayText}</i>
-                </span>
-                <div className="ipod-controls-mini">
-                  <button className="mini-play" onClick={() => toggleMusic()}>
-                    {isPlaying ? "Ⅱ" : "▶"}
-                  </button>
-                </div>
-              </>
-            )}
-          </aside>
-
           <button className="fish-dock-toggle" type="button" onClick={() => setSideMenuOpen((value) => !value)}>
             {sideMenuOpen ? "Menu schliessen" : ".fish Menu"}
           </button>

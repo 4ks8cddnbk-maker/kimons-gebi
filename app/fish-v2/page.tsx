@@ -53,10 +53,6 @@ export default function FishV2Gate() {
   const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
 
   useEffect(() => {
-    setUnlocked(window.localStorage.getItem("fish-phone-unlocked") === "yes");
-  }, []);
-
-  useEffect(() => {
     if (!unlocked) return;
     fetch("/api/photos")
       .then((response) => response.json())
@@ -113,7 +109,6 @@ export default function FishV2Gate() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pinCode })
     });
-    window.localStorage.setItem("fish-phone-unlocked", "yes");
     setUnlocked(true);
     setActiveApp("home");
   }
@@ -262,7 +257,6 @@ export default function FishV2Gate() {
                     onTilt={tiltIpod}
                     onResetTilt={() => setIpodTilt({ x: 0, y: 0 })}
                     onTogglePlayback={togglePlayback}
-                    onOpenFish={() => (window.location.href = "/walls")}
                   />
                 )}
               </>
@@ -335,6 +329,18 @@ function HomeScreen({ onOpen }: { onOpen: (app: PhoneApp) => void }) {
   return (
     <div className="ios-homescreen">
       <div className="ios-wallpaper" />
+      <section className="ios-weather-widget" aria-label="Kimons Geburtstag">
+        <div>
+          <small>Aachen</small>
+          <strong>27°</strong>
+          <span>Birthday weather</span>
+        </div>
+        <i />
+        <ul>
+          <li>19:00</li>
+          <li>Wendelinstraße 94</li>
+        </ul>
+      </section>
       <div className="ios-app-grid">
         {appIcons.map((app) => (
           <button key={app.id} type="button" className="ios-app" onClick={() => onOpen(app.id)}>
@@ -373,8 +379,7 @@ function AppScreen({
   ipodTilt,
   onTilt,
   onResetTilt,
-  onTogglePlayback,
-  onOpenFish
+  onTogglePlayback
 }: {
   app: PhoneApp;
   photos: GalleryPhoto[];
@@ -387,7 +392,6 @@ function AppScreen({
   onTilt: (event: MouseEvent<HTMLDivElement>) => void;
   onResetTilt: () => void;
   onTogglePlayback: () => void;
-  onOpenFish: () => void;
 }) {
   const title = app === "photos" ? "Fotos" : app === "fish" ? ".fish" : app === "maps" ? "Maps" : ".fish Player";
 
@@ -410,27 +414,28 @@ function AppScreen({
       )}
       {app === "fish" && (
         <div className="ios-fish-app">
-          <div className="fish-app-card">
-            <img src="/fish-app-icon.png" alt=".fish" />
-            <h2>.fish</h2>
-            <p>for Friends only.</p>
-            <button type="button" onClick={onOpenFish}>
-              .fish öffnen
-            </button>
-          </div>
+          <iframe title=".fish" src="/walls" />
         </div>
       )}
       {app === "maps" && (
         <div className="ios-maps-app">
           <iframe
-            title="Wendelinstraße 94 auf Google Maps"
-            src="https://www.google.com/maps?q=Wendelinstra%C3%9Fe%2094&output=embed"
+            title="Wendelinstraße 94 in Aachen auf Google Maps"
+            src="https://www.google.com/maps?q=Wendelinstra%C3%9Fe%2094%20Aachen&z=16&output=embed"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
           <div className="map-pin-card">
-            <strong>Wendelinstraße 94</strong>
-            <span>Markiert für Kimons Geburtstag.</span>
+            <small>Party-Ziel</small>
+            <strong>Wendelinstraße 94, Aachen</strong>
+            <span>Tippe und ziehe die Karte zum Erkunden.</span>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Wendelinstra%C3%9Fe%2094%20Aachen"
+              target="_blank"
+              rel="noreferrer"
+            >
+              In Google Maps öffnen
+            </a>
           </div>
         </div>
       )}
