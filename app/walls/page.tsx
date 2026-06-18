@@ -58,7 +58,8 @@ type Follow = {
 
 const reactionPrefix = "__reaction__:";
 const replyPrefix = "__reply__:";
-const clearedNotificationsStorageKey = "fish-cleared-notifications-v1";
+const clearedNotificationsStorageKey = "fish-cleared-notifications-v2";
+const clearedNotificationsCookieKey = "fish_cleared_notifications";
 const reactionOptions = [
   { key: "thumbs-up", label: "Daumen hoch" },
   { key: "wow", label: "Erstaunt" },
@@ -423,13 +424,35 @@ export default function WallsPage() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const profileId = params.get("profile");
+    const postId = params.get("post");
+
+    if (profileId) {
+      setViewProfileId(profileId);
+      setShowFishPage(false);
+    }
+
+    if (postId) {
+      setHighlightedPostId(postId);
+      window.setTimeout(() => {
+        document.getElementById(`fish-post-${postId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 450);
+    }
+  }, [posts.length, profiles.length]);
+
+  useEffect(() => {
     try {
       const stored = window.localStorage.getItem(clearedNotificationsStorageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setClearedNotificationIds(parsed.filter((id) => typeof id === "string"));
-        }
+      const legacyStored = window.localStorage.getItem("fish-cleared-notifications-v1");
+      const cookieMatch = document.cookie.match(new RegExp(`(?:^|; )${clearedNotificationsCookieKey}=([^;]+)`));
+      const parsedStorage = stored ? JSON.parse(stored) : [];
+      const parsedLegacy = legacyStored ? JSON.parse(legacyStored) : [];
+      const parsedCookie = cookieMatch ? JSON.parse(decodeURIComponent(cookieMatch[1])) : [];
+      const merged = [...parsedStorage, ...parsedLegacy, ...parsedCookie].filter((id) => typeof id === "string");
+
+      if (merged.length) {
+        setClearedNotificationIds([...new Set(merged)]);
       }
     } catch {
       setClearedNotificationIds([]);
@@ -439,6 +462,7 @@ export default function WallsPage() {
   useEffect(() => {
     try {
       window.localStorage.setItem(clearedNotificationsStorageKey, JSON.stringify(clearedNotificationIds));
+      document.cookie = `${clearedNotificationsCookieKey}=${encodeURIComponent(JSON.stringify(clearedNotificationIds))}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
       // localStorage can be unavailable in private browsing; notifications still work for the session.
     }

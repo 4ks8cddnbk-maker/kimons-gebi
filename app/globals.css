@@ -2222,7 +2222,7 @@ footer {
 }
 
 .iphone-stage {
-  width: min(430px, 100%);
+  width: min(430px, 100%, calc((100svh - 26px) * 0.48));
   perspective: 1200px;
 }
 
@@ -2446,7 +2446,7 @@ footer {
 }
 
 .ios-homescreen {
-  padding: 48px 23px 96px;
+  padding: 56px 23px 96px;
 }
 
 .ios-wallpaper {
@@ -2463,11 +2463,11 @@ footer {
 .ios-weather-widget {
   position: relative;
   z-index: 2;
-  min-height: 104px;
+  min-height: 98px;
   display: grid;
   grid-template-columns: 1fr 82px;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   padding: 15px 16px;
   overflow: hidden;
   background:
@@ -2537,8 +2537,8 @@ footer {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 25px 28px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 18px;
 }
 
 .ios-app {
@@ -2559,7 +2559,7 @@ footer {
 }
 
 .ios-app strong {
-  font-size: 22px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -2576,6 +2576,23 @@ footer {
     inset 0 -12px 18px rgba(0, 0, 0, 0.14),
     0 10px 18px rgba(0, 0, 0, 0.22);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.ios-app-icon.calendar {
+  align-content: start;
+  gap: 2px;
+  color: #222b3a;
+  font-size: 38px;
+  font-weight: 950;
+  background:
+    linear-gradient(#f25252 0 28%, #f8fbff 29% 100%);
+}
+
+.ios-app-icon.calendar::before {
+  content: "JUN";
+  color: #fff;
+  font-size: 12px;
+  line-height: 24px;
 }
 
 .ios-app:hover .ios-app-icon {
@@ -2611,6 +2628,24 @@ footer {
     linear-gradient(145deg, #ff70c8, #8130e5 55%, #ff9a24);
 }
 
+.ios-app-icon.dresscode {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.88), transparent 24%),
+    linear-gradient(145deg, #232a38, #7b8ea8);
+}
+
+.ios-app-icon.karaoke {
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.75), transparent 22%),
+    linear-gradient(145deg, #34c5ff, #8657ff 55%, #ff5ea8);
+}
+
+.ios-app-icon.catering {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.78), transparent 20%),
+    linear-gradient(145deg, #fff0a4, #ff9d43 58%, #b95b22);
+}
+
 .ios-dock {
   position: absolute;
   z-index: 2;
@@ -2619,8 +2654,8 @@ footer {
   bottom: 0;
   display: flex;
   justify-content: center;
-  gap: 24px;
-  padding: 16px 20px 19px;
+  gap: 20px;
+  padding: 13px 20px 16px;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.12)),
     rgba(216, 233, 243, 0.42);
@@ -2637,7 +2672,7 @@ footer {
 
 .ios-app-header {
   position: absolute;
-  inset: 0 0 auto;
+  inset: 34px 0 auto;
   z-index: 4;
   height: 48px;
   display: grid;
@@ -2649,7 +2684,7 @@ footer {
 }
 
 .ios-app-screen {
-  padding-top: 48px;
+  padding-top: 82px;
   color: #172235;
   background: linear-gradient(#f8fbff, #dceaf6);
 }
@@ -2756,6 +2791,357 @@ footer {
     #ddebf2;
 }
 
+.ios-calendar-app,
+.ios-dresscode-app,
+.ios-karaoke-app,
+.ios-catering-app {
+  height: 100%;
+  padding: 12px;
+  overflow: auto;
+  color: #172235;
+  background:
+    linear-gradient(90deg, rgba(110, 153, 190, 0.12) 0 1px, transparent 1px 22px),
+    linear-gradient(rgba(110, 153, 190, 0.12) 0 1px, transparent 1px 22px),
+    linear-gradient(#f8fbff, #dfeef8);
+}
+
+.calendar-toolbar {
+  display: grid;
+  grid-template-columns: 64px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  color: #fff;
+  background: linear-gradient(#8bb6e4, #497fb7 55%, #2e629a);
+  border: 1px solid #2e629a;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.calendar-toolbar button {
+  min-height: 27px;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(#7fa8d6, #386ea8);
+  border: 1px solid rgba(21, 62, 111, 0.7);
+  border-radius: 6px;
+}
+
+.calendar-toolbar strong {
+  text-align: center;
+}
+
+.calendar-week,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-week {
+  margin-top: 12px;
+  color: #6d7989;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.calendar-grid {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(117, 142, 170, 0.45);
+  border-radius: 8px;
+}
+
+.calendar-grid span {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  font-weight: 850;
+  border-right: 1px solid rgba(117, 142, 170, 0.2);
+  border-bottom: 1px solid rgba(117, 142, 170, 0.2);
+}
+
+.calendar-grid .birthday-day {
+  color: #fff;
+  background: linear-gradient(#75cfff, #1877c7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.calendar-event {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 13px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(117, 142, 170, 0.48);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 #fff, 0 12px 24px rgba(23, 40, 68, 0.12);
+}
+
+.calendar-event button,
+.ios-karaoke-app button {
+  min-height: 36px;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(#79d5ff, #1877c7 58%, #0b5b9c);
+  border: 1px solid #0b5b9c;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.ios-dresscode-app h2,
+.ios-karaoke-app h2,
+.ios-catering-app h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.phone-dress-scale {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  margin: 14px 0;
+}
+
+.phone-dress-scale span {
+  min-height: 30px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(#ffb0ad, #ef7772);
+  border-radius: 8px;
+}
+
+.phone-dress-scale span.wanted {
+  background: linear-gradient(#5fdb79, #28a947);
+}
+
+.phone-dress-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.phone-dress-cards article,
+.ios-catering-app div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(117, 142, 170, 0.42);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.phone-dress-cards article.good {
+  border-color: rgba(40, 169, 71, 0.42);
+  background: rgba(236, 255, 240, 0.82);
+}
+
+.ios-karaoke-app {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.ios-karaoke-app input,
+.ios-karaoke-app textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 11px;
+  color: #172235;
+  font: inherit;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(117, 142, 170, 0.58);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(23, 40, 68, 0.12);
+}
+
+.ios-karaoke-app textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.ios-karaoke-app span.done {
+  color: #12672b;
+  font-weight: 950;
+}
+
+.ios-karaoke-app span.error {
+  color: #a92323;
+  font-weight: 950;
+}
+
+.ios-catering-app {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.ios-catering-app ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 19px;
+}
+
+.notification-grabber {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  z-index: 26;
+  width: 88px;
+  height: 18px;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  cursor: grab;
+}
+
+.notification-grabber::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 7px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+.ios-notification-center {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  padding: 58px 14px 18px;
+  color: #101923;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.28), transparent 30%),
+    linear-gradient(rgba(40, 84, 102, 0.32), rgba(7, 21, 34, 0.42)),
+    linear-gradient(160deg, #8fc8d7, #eaf5f7);
+  backdrop-filter: blur(18px);
+  animation: notification-drop 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-time {
+  display: grid;
+  justify-items: center;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.notification-time strong {
+  font-size: 54px;
+  font-weight: 200;
+  line-height: 1;
+}
+
+.lockscreen-player,
+.phone-notification,
+.notification-center-head {
+  margin-top: 12px;
+  background: rgba(220, 248, 241, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(16px);
+}
+
+.lockscreen-player {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+}
+
+.lockscreen-player span,
+.phone-notification small {
+  color: rgba(23, 40, 68, 0.72);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.notification-center-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.notification-center-head button,
+.phone-notification > button:last-child {
+  color: #a92323;
+  font-weight: 950;
+  background: transparent;
+  border: 0;
+}
+
+.phone-notifications {
+  display: grid;
+  gap: 10px;
+}
+
+.phone-notification {
+  display: flex;
+  overflow: hidden;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.phone-notification::-webkit-scrollbar {
+  display: none;
+}
+
+.phone-notification > button:first-child {
+  display: grid;
+  flex: 0 0 100%;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  color: #101923;
+  background: transparent;
+  border: 0;
+  scroll-snap-align: start;
+}
+
+.phone-notification > button:last-child {
+  flex: 0 0 86px;
+  border-left: 1px solid rgba(169, 35, 35, 0.16);
+  background: rgba(255, 95, 87, 0.1);
+  scroll-snap-align: end;
+}
+
+.phone-notification small {
+  display: flex;
+  justify-content: space-between;
+}
+
+.phone-notification strong {
+  font-size: 17px;
+}
+
+.phone-notifications p {
+  color: #fff;
+  text-align: center;
+  font-weight: 900;
+}
+
+@keyframes notification-drop {
+  from {
+    transform: translateY(-92%);
+    opacity: 0.35;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .ios-maps-app iframe {
   width: 100%;
   height: 100%;
@@ -2851,8 +3237,9 @@ footer {
 
   .iphone-device {
     width: min(390px, calc(100vw - 16px));
+    aspect-ratio: 9 / 17.2;
     border-radius: 44px;
-    padding: 17px 10px 66px;
+    padding: 16px 10px 58px;
   }
 
   .iphone-screen {
@@ -2860,14 +3247,28 @@ footer {
   }
 
   .ios-app-icon {
-    width: 74px;
-    height: 74px;
+    width: 58px;
+    height: 58px;
+    border-radius: 15px;
+    font-size: 30px;
+  }
+
+  .ios-app-grid {
+    gap: 16px 10px;
+  }
+
+  .ios-app strong {
+    font-size: 12px;
   }
 
   .ios-weather-widget {
-    min-height: 96px;
-    margin-bottom: 18px;
-    padding: 13px;
+    min-height: 82px;
+    margin-bottom: 16px;
+    padding: 11px;
+  }
+
+  .ios-weather-widget strong {
+    font-size: 34px;
   }
 
   .ios-app strong {
