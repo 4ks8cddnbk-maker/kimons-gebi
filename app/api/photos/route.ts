@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
-import { listPhotos, uploadPhoto } from "@/lib/photos";
+import { isAllowedImage, listPhotos, uploadPhoto } from "@/lib/photos";
 
 export async function GET() {
   const photos = await listPhotos();
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Bitte wähle mindestens ein Foto aus." }, { status: 400 });
   }
 
-  if (files.some((file) => !file.type.startsWith("image/"))) {
+  if (files.some((file) => !isAllowedImage(file))) {
     return NextResponse.json({ ok: false, message: "Nur Bilddateien sind erlaubt." }, { status: 400 });
   }
 

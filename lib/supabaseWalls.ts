@@ -467,7 +467,10 @@ export async function deleteWallProfile(id: string) {
 export async function uploadWallImage(file: File) {
   assertSupabaseConfig();
 
-  if (!file.type.startsWith("image/")) {
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
+  const allowedImageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif"]);
+
+  if (!file.type.startsWith("image/") && !allowedImageExtensions.has(extension)) {
     throw new Error("Nur Bilder sind erlaubt.");
   }
 
@@ -475,14 +478,14 @@ export async function uploadWallImage(file: File) {
     throw new Error("Ein Bild darf maximal 6 MB gross sein.");
   }
 
-  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${Date.now()}-${Math.random().toString(16).slice(2)}.${extension}`;
+  const safeExtension = extension || file.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+  const path = `${Date.now()}-${Math.random().toString(16).slice(2)}.${safeExtension}`;
   const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${path}`, {
     method: "POST",
     headers: {
       apikey: supabaseKey,
       Authorization: `Bearer ${supabaseKey}`,
-      "Content-Type": file.type,
+      "Content-Type": file.type || "application/octet-stream",
       "x-upsert": "false"
     },
     body: file

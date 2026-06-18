@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   if (hasAccess && pathname === "/") {
     const url = request.nextUrl.clone();
-    url.pathname = "/walls";
+    url.pathname = "/fish-v2";
     return NextResponse.redirect(url);
   }
 

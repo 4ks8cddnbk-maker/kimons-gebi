@@ -5,6 +5,18 @@ export type GalleryPhoto = {
   caption?: string;
 };
 
+const imageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif"]);
+
+function getImageExtension(file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
+  if (extension) return extension;
+  return file.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+}
+
+export function isAllowedImage(file: File) {
+  return file.type.startsWith("image/") || imageExtensions.has(getImageExtension(file));
+}
+
 function hasBlobToken() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
@@ -31,7 +43,7 @@ export async function uploadPhoto(file: File) {
   }
 
   const { put } = await import("@vercel/blob");
-  const extension = file.name.split(".").pop() || "jpg";
+  const extension = getImageExtension(file);
   const safeName = file.name
     .replace(/\.[^.]+$/, "")
     .toLowerCase()
