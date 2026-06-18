@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, MouseEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   fishRadioSongs as tracks,
@@ -88,6 +88,7 @@ export default function FishV2Gate() {
   const [wallComments, setWallComments] = useState<WallComment[]>([]);
   const [wallFollows, setWallFollows] = useState<WallFollow[]>([]);
   const [clearedNotifications, setClearedNotifications] = useState<string[]>([]);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackProgress, setTrackProgress] = useState(0);
@@ -98,6 +99,8 @@ export default function FishV2Gate() {
   const [radioNow, setRadioNow] = useState(Date.now());
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
 
   const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
@@ -170,6 +173,14 @@ export default function FishV2Gate() {
   }, []);
 
   useEffect(() => {
+    setPushEnabled(typeof Notification !== "undefined" && Notification.permission === "granted");
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/fish-sw.js").catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(() => {
     fetch("https://api.open-meteo.com/v1/forecast?latitude=50.7753&longitude=6.0839&current=temperature_2m,weather_code&timezone=Europe%2FBerlin")
       .then((response) => response.json())
       .then((data) => {
@@ -222,6 +233,31 @@ export default function FishV2Gate() {
       // If browser storage is blocked, the notification disappears for this session.
     }
   }
+
+  useEffect(() => {
+    if (!pushEnabled || !phoneNotifications.length || typeof Notification === "undefined") return;
+
+    const newest = phoneNotifications[0];
+    if (notifiedIdsRef.current.has(newest.id)) return;
+    notifiedIdsRef.current.add(newest.id);
+
+    if (Notification.permission === "granted") {
+      navigator.serviceWorker
+        ?.getRegistration()
+        .then((registration) => {
+          if (registration) {
+            registration.showNotification(".fish", {
+              body: newest.text,
+              icon: "/fish-app-icon.png",
+              tag: newest.id
+            });
+          } else {
+            new Notification(".fish", { body: newest.text, icon: "/fish-app-icon.png", tag: newest.id });
+          }
+        })
+        .catch(() => new Notification(".fish", { body: newest.text, icon: "/fish-app-icon.png", tag: newest.id }));
+    }
+  }, [phoneNotifications, pushEnabled]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -376,7 +412,28 @@ export default function FishV2Gate() {
       setPin("");
       return;
     }
+    setNotificationCenterOpen(false);
     setActiveApp("home");
+  }
+
+  async function enablePushNotifications() {
+    if (typeof Notification === "undefined") return;
+    const permission = await Notification.requestPermission();
+    setPushEnabled(permission === "granted");
+  }
+
+  function startNotificationDrag(event: PointerEvent<HTMLButtonElement>) {
+    dragStartYRef.current = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function finishNotificationDrag(event: PointerEvent<HTMLButtonElement>) {
+    const startY = dragStartYRef.current;
+    dragStartYRef.current = null;
+
+    if (startY !== null && event.clientY - startY > 34) {
+      setNotificationCenterOpen(true);
+    }
   }
 
   function openNotification(notification: PhoneNotification) {
@@ -439,6 +496,8 @@ export default function FishV2Gate() {
                 <button
                   className="notification-grabber"
                   type="button"
+                  onPointerDown={startNotificationDrag}
+                  onPointerUp={finishNotificationDrag}
                   onClick={() => setNotificationCenterOpen((value) => !value)}
                   aria-label="Benachrichtigungen öffnen"
                 />
@@ -452,6 +511,8 @@ export default function FishV2Gate() {
                     onOpen={openNotification}
                     onDismiss={(id) => saveClearedNotifications([...clearedNotifications, id])}
                     onClearAll={() => saveClearedNotifications([...clearedNotifications, ...phoneNotifications.map((note) => note.id)])}
+                    onEnablePush={enablePushNotifications}
+                    pushEnabled={pushEnabled}
                   />
                 )}
               </>
@@ -862,7 +923,9 @@ function NotificationCenter({
   isPlaying,
   onOpen,
   onDismiss,
-  onClearAll
+  onClearAll,
+  onEnablePush,
+  pushEnabled
 }: {
   now: Date;
   notifications: PhoneNotification[];
@@ -872,6 +935,8 @@ function NotificationCenter({
   onOpen: (notification: PhoneNotification) => void;
   onDismiss: (id: string) => void;
   onClearAll: () => void;
+  onEnablePush: () => void;
+  pushEnabled: boolean;
 }) {
   return (
     <div className="ios-notification-center">
@@ -886,11 +951,16 @@ function NotificationCenter({
       </div>
       <div className="notification-center-head">
         <strong>.fish Benachrichtigungen</strong>
-        {notifications.length > 0 && (
-          <button type="button" onClick={onClearAll}>
-            clear all
+        <div>
+          <button type="button" onClick={onEnablePush}>
+            {pushEnabled ? "push an" : "push aktivieren"}
           </button>
-        )}
+          {notifications.length > 0 && (
+            <button type="button" onClick={onClearAll}>
+              clear all
+            </button>
+          )}
+        </div>
       </div>
       <div className="phone-notifications">
         {notifications.length ? (

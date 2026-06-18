@@ -60,6 +60,7 @@ const reactionPrefix = "__reaction__:";
 const replyPrefix = "__reply__:";
 const clearedNotificationsStorageKey = "fish-cleared-notifications-v2";
 const clearedNotificationsCookieKey = "fish_cleared_notifications";
+const seenNotificationsStorageKey = "fish-seen-notifications-v1";
 const reactionOptions = [
   { key: "thumbs-up", label: "Daumen hoch" },
   { key: "wow", label: "Erstaunt" },
@@ -236,6 +237,7 @@ export default function WallsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationTab, setNotificationTab] = useState<"all" | "follows" | "comments" | "reactions" | "collabs">("all");
   const [seenNotifications, setSeenNotifications] = useState(0);
+  const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
   const [highlightUnreadCount, setHighlightUnreadCount] = useState(0);
   const [showOlderNotifications, setShowOlderNotifications] = useState(false);
   const [clearedNotificationIds, setClearedNotificationIds] = useState<string[]>([]);
@@ -363,6 +365,7 @@ export default function WallsPage() {
     if (notificationTab === "all") return notifications;
     return notifications.filter((note) => note.category === notificationTab);
   }, [notificationTab, notifications]);
+  const unseenNotificationCount = notifications.filter((note) => !seenNotificationIds.includes(note.id)).length;
   const displayedNotifications = showOlderNotifications ? visibleNotifications : visibleNotifications.slice(0, 5);
   const olderNotificationCount = Math.max(0, visibleNotifications.length - 5);
   const mutualFriends = useMemo(() => {
@@ -458,6 +461,28 @@ export default function WallsPage() {
       setClearedNotificationIds([]);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(seenNotificationsStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSeenNotificationIds(parsed.filter((id) => typeof id === "string"));
+        }
+      }
+    } catch {
+      setSeenNotificationIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(seenNotificationsStorageKey, JSON.stringify(seenNotificationIds));
+    } catch {
+      // Reading notifications still works for the session if storage is blocked.
+    }
+  }, [seenNotificationIds]);
 
   useEffect(() => {
     try {
@@ -1074,8 +1099,9 @@ export default function WallsPage() {
       return;
     }
 
-    setHighlightUnreadCount(Math.max(0, notifications.length - seenNotifications));
+    setHighlightUnreadCount(unseenNotificationCount);
     setSeenNotifications(notifications.length);
+    setSeenNotificationIds((current) => [...new Set([...current, ...notifications.map((note) => note.id)])]);
     setShowOlderNotifications(false);
     setNotificationsOpen(true);
   }
@@ -1238,28 +1264,6 @@ export default function WallsPage() {
       </article>
     );
   }
-
-  const partyAuthor: Profile = {
-    id: "party-kimon",
-    name: "Kimon",
-    handle: "kimon",
-    avatar: "",
-    bio: "",
-    mood: "",
-    song: "",
-    theme: "blue",
-    pattern: "aqua",
-    stickerPack: "party",
-    headline: "",
-    glitter: true,
-    backgroundColor: "#dcecff",
-    accentColor: "#66b9f1",
-    fontStyle: "lucida",
-    layoutDensity: "cozy",
-    verified: true,
-    photos: [],
-    createdAt: new Date(0).toISOString()
-  };
 
   return (
     <main className="walls-page">
@@ -1430,8 +1434,8 @@ export default function WallsPage() {
 
           <button className="fish-bell" type="button" onClick={toggleNotifications} aria-label="Benachrichtigungen">
             bell
-            {Math.max(0, notifications.length - seenNotifications) > 0 && (
-              <span>{Math.max(0, notifications.length - seenNotifications)}</span>
+            {unseenNotificationCount > 0 && (
+              <span>{unseenNotificationCount}</span>
             )}
           </button>
 
@@ -1447,6 +1451,7 @@ export default function WallsPage() {
                       type="button"
                       onClick={() => {
                         setClearedNotificationIds((current) => [...new Set([...current, ...notifications.map((note) => note.id)])]);
+                        setSeenNotificationIds((current) => [...new Set([...current, ...notifications.map((note) => note.id)])]);
                         setSeenNotifications(0);
                         setHighlightUnreadCount(0);
                       }}
@@ -1595,36 +1600,6 @@ export default function WallsPage() {
                   <button className="aqua-button fishpage-create-button" type="button" onClick={openCreateFishFromFishPage}>
                     .fish erstellen
                   </button>
-                  <article className="wall-post party-news-post">
-                    <div className="post-route">
-                      {renderProfileChip(partyAuthor)}
-                    </div>
-                    <div className="pinned-ribbon">pinned</div>
-                    <strong>Kimons Geburtstagsparty</strong>
-                    <div className="party-news-balloons" aria-hidden="true">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                    <div className="party-news-confetti" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                    </div>
-                    <p>
-                      Kimons Geburtstagsparty
-                      <br />
-                      27.06.2026 · 19:00 Uhr
-                      <br />
-                      Wendelinstraße 94
-                    </p>
-                    <a className="secondary-button party-news-link" href="/party">
-                      Party-Website öffnen
-                    </a>
-                  </article>
                   <div className="wall-posts">
                     {fishPagePosts.length ? fishPagePosts.map((post) => renderPost(post)) : <p>Noch keine fremden .fishs da.</p>}
                   </div>
