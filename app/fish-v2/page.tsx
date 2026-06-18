@@ -9,7 +9,7 @@ import {
   type FishRadioSlot
 } from "@/lib/fishRadio";
 
-type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering";
+type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus";
 type GalleryPhoto = { url: string; caption?: string; uploadedAt?: string };
 type Weather = { temperature: number; label: string };
 type WallProfile = { id: string; name: string; handle: string; avatar?: string; createdAt: string };
@@ -31,6 +31,7 @@ const appIcons: Array<{ id: PhoneApp; label: string; className: string; icon: st
   { id: "photos", label: "Fotos", className: "photos", icon: "✿" },
   { id: "fish", label: ".fish", className: "fish", icon: "" },
   { id: "maps", label: "Maps", className: "maps", icon: "⌖" },
+  { id: "nachtbus", label: "Nachtbus", className: "nachtbus", icon: "☾" },
   { id: "dresscode", label: "Dresscode", className: "dresscode", icon: "◆" },
   { id: "karaoke", label: "Karaoke", className: "karaoke", icon: "♫" },
   { id: "catering", label: "Catering", className: "catering", icon: "☕" },
@@ -73,8 +74,30 @@ function relativeTime(value: string, now: Date) {
   return `${Math.max(1, Math.floor(diff / day))}d`;
 }
 
+function vibrate(pattern: number | number[]) {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    try {
+      navigator.vibrate(pattern);
+    } catch {
+      // Some browsers throw on vibrate inside non-user gestures; ignore.
+    }
+  }
+}
+
+function originFromEvent(event: MouseEvent<HTMLElement>) {
+  const screen = event.currentTarget.closest(".iphone-screen");
+  const target = event.currentTarget.getBoundingClientRect();
+  if (!screen) return "50% 46%";
+  const box = screen.getBoundingClientRect();
+  const x = Math.round(target.left + target.width / 2 - box.left);
+  const y = Math.round(target.top + target.height / 2 - box.top);
+  return `${x}px ${y}px`;
+}
+
 export default function FishV2Gate() {
   const [unlocked, setUnlocked] = useState(false);
+  const [booting, setBooting] = useState(true);
+  const [openOrigin, setOpenOrigin] = useState("50% 46%");
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [activeApp, setActiveApp] = useState<PhoneApp>("home");
@@ -170,6 +193,12 @@ export default function FishV2Gate() {
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 15_000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    // Boot sequence runs once per page load: black → logo → lock screen.
+    const timer = window.setTimeout(() => setBooting(false), 2400);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -296,6 +325,7 @@ export default function FishV2Gate() {
   async function submitPin(nextPin: string) {
     if (nextPin !== pinCode) {
       setPinError(true);
+      vibrate([40, 60, 40]);
       window.setTimeout(() => {
         setPin("");
         setPinError(false);
@@ -303,6 +333,7 @@ export default function FishV2Gate() {
       return;
     }
 
+    vibrate(18);
     await fetch("/api/site-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -314,9 +345,16 @@ export default function FishV2Gate() {
 
   function pressDigit(digit: string) {
     if (pin.length >= 4 || pinError) return;
+    vibrate(5);
     const nextPin = `${pin}${digit}`;
     setPin(nextPin);
     if (nextPin.length === 4) submitPin(nextPin);
+  }
+
+  function launchApp(app: PhoneApp, event?: MouseEvent<HTMLElement>) {
+    if (event) setOpenOrigin(originFromEvent(event));
+    vibrate(8);
+    setActiveApp(app);
   }
 
   function playSelectedTrack(slot = getFishRadioSlot()) {
@@ -412,6 +450,7 @@ export default function FishV2Gate() {
       setPin("");
       return;
     }
+    vibrate(8);
     setNotificationCenterOpen(false);
     setActiveApp("home");
   }
@@ -470,15 +509,17 @@ export default function FishV2Gate() {
         <div className="iphone-device">
           <div className="iphone-speaker" />
           <div className={`iphone-screen ${!unlocked ? "locked" : ""}`}>
+            {booting && <BootScreen />}
             {!unlocked ? (
               <LockScreen pin={pin} pinError={pinError} onPress={pressDigit} onReset={() => setPin("")} />
             ) : (
               <>
                 <PhoneStatusBar />
-                {activeApp === "home" && <HomeScreen onOpen={setActiveApp} now={now} weather={weather} />}
+                {activeApp === "home" && <HomeScreen onOpen={launchApp} now={now} weather={weather} />}
                 {activeApp !== "home" && (
                   <AppScreen
                     app={activeApp}
+                    origin={openOrigin}
                     photos={photos}
                     isPlaying={isPlaying}
                     beatPulse={beatPulse}
@@ -489,7 +530,7 @@ export default function FishV2Gate() {
                     onTilt={tiltIpod}
                     onResetTilt={() => setIpodTilt({ x: 0, y: 0 })}
                     onTogglePlayback={togglePlayback}
-                    onOpenApp={setActiveApp}
+                    onOpenApp={launchApp}
                     now={now}
                   />
                 )}
@@ -538,35 +579,123 @@ function LockScreen({
   onPress: (digit: string) => void;
   onReset: () => void;
 }) {
+  const [slid, setSlid] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  function cancel() {
+    setSlid(false);
+    onReset();
+  }
+
   return (
     <div className="ios-lockscreen">
       <div className="ios-lock-status">
-        <span>●●●○○</span>
+        <span className="ios-signal" aria-hidden="true" />
         <strong>KIMON</strong>
-        <span>51%</span>
+        <span className="ios-battery" aria-hidden="true" />
       </div>
-      <div className={`passcode-panel ${pinError ? "shake" : ""}`}>
-        <h1>Enter Passcode</h1>
-        <div className="passcode-dots" aria-label={`${pin.length} von 4 Ziffern eingegeben`}>
-          {[0, 1, 2, 3].map((index) => (
-            <span key={index} className={index < pin.length ? "filled" : ""} />
-          ))}
+
+      {!slid ? (
+        <div className="ios-lock-face">
+          <time className="ios-lock-clock">
+            {now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+          </time>
+          <span className="ios-lock-date">
+            {now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+          <SlideToUnlock onUnlock={() => setSlid(true)} />
         </div>
-        <div className="passcode-grid">
-          {keypad.map(([digit, letters]) => (
-            <button key={digit} type="button" onClick={() => onPress(digit)}>
-              <strong>{digit}</strong>
-              <small>{letters}</small>
-            </button>
-          ))}
+      ) : (
+        <div className={`passcode-panel ${pinError ? "shake" : ""}`}>
+          <h1>Code eingeben</h1>
+          <div className="passcode-dots" aria-label={`${pin.length} von 4 Ziffern eingegeben`}>
+            {[0, 1, 2, 3].map((index) => (
+              <span key={index} className={index < pin.length ? "filled" : ""} />
+            ))}
+          </div>
+          <div className="passcode-grid">
+            {keypad.map(([digit, letters]) => (
+              <button key={digit} type="button" onClick={() => onPress(digit)}>
+                <strong>{digit}</strong>
+                <small>{letters}</small>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
       <div className="lock-actions">
-        <button type="button">Emergency</button>
-        <button type="button" onClick={onReset}>
-          Cancel
-        </button>
+        <button type="button">Notruf</button>
+        {slid ? (
+          <button type="button" onClick={cancel}>
+            Abbrechen
+          </button>
+        ) : (
+          <span />
+        )}
       </div>
+    </div>
+  );
+}
+
+function SlideToUnlock({ onUnlock }: { onUnlock: () => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; max: number } | null>(null);
+
+  function maxOffset() {
+    const track = trackRef.current;
+    if (!track) return 0;
+    return Math.max(0, track.clientWidth - 64);
+  }
+
+  function begin(event: PointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { startX: event.clientX, max: maxOffset() };
+    setDragging(true);
+  }
+
+  function move(event: PointerEvent<HTMLButtonElement>) {
+    if (!dragRef.current) return;
+    const next = Math.min(dragRef.current.max, Math.max(0, event.clientX - dragRef.current.startX));
+    setOffset(next);
+  }
+
+  function end() {
+    const data = dragRef.current;
+    dragRef.current = null;
+    setDragging(false);
+    if (data && offset > data.max * 0.7) {
+      setOffset(data.max);
+      window.setTimeout(onUnlock, 140);
+    } else {
+      setOffset(0);
+    }
+  }
+
+  return (
+    <div className="slide-to-unlock" ref={trackRef}>
+      <span className="slide-text">entsperren</span>
+      <span className="slide-hint" aria-hidden="true">›››</span>
+      <button
+        type="button"
+        className={`slide-knob ${dragging ? "dragging" : ""}`}
+        style={{ transform: `translateX(${offset}px)` }}
+        onPointerDown={begin}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        onClick={onUnlock}
+        aria-label="Zum Entsperren schieben"
+      >
+        ›
+      </button>
     </div>
   );
 }
@@ -581,14 +710,22 @@ function PhoneStatusBar() {
 
   return (
     <div className="ios-statusbar">
-      <span>●●●○○ .fish</span>
+      <span><i className="ios-signal" aria-hidden="true" /> .fish</span>
       <strong>{now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</strong>
-      <span>87%</span>
+      <span className="ios-battery" aria-hidden="true" />
     </div>
   );
 }
 
-function HomeScreen({ onOpen, now, weather }: { onOpen: (app: PhoneApp) => void; now: Date; weather: Weather | null }) {
+function HomeScreen({
+  onOpen,
+  now,
+  weather
+}: {
+  onOpen: (app: PhoneApp, event?: MouseEvent<HTMLElement>) => void;
+  now: Date;
+  weather: Weather | null;
+}) {
   return (
     <div className="ios-homescreen">
       <div className="ios-wallpaper" />
@@ -606,7 +743,7 @@ function HomeScreen({ onOpen, now, weather }: { onOpen: (app: PhoneApp) => void;
       </section>
       <div className="ios-app-grid">
         {appIcons.map((app) => (
-          <button key={app.id} type="button" className="ios-app" onClick={() => onOpen(app.id)}>
+          <button key={app.id} type="button" className="ios-app" onClick={(event) => onOpen(app.id, event)}>
             <span className={`ios-app-icon ${app.className}`}>
               {app.id === "fish" ? <img src="/fish-app-icon.png" alt="" /> : app.icon}
             </span>
@@ -615,15 +752,15 @@ function HomeScreen({ onOpen, now, weather }: { onOpen: (app: PhoneApp) => void;
         ))}
       </div>
       <div className="ios-dock">
-        <button type="button" className="ios-app mini" onClick={() => onOpen("fish")}>
+        <button type="button" className="ios-app mini" onClick={(event) => onOpen("fish", event)}>
           <span className="ios-app-icon fish">
             <img src="/fish-app-icon.png" alt="" />
           </span>
         </button>
-        <button type="button" className="ios-app mini" onClick={() => onOpen("maps")}>
+        <button type="button" className="ios-app mini" onClick={(event) => onOpen("maps", event)}>
           <span className="ios-app-icon maps">⌖</span>
         </button>
-        <button type="button" className="ios-app mini" onClick={() => onOpen("player")}>
+        <button type="button" className="ios-app mini" onClick={(event) => onOpen("player", event)}>
           <span className="ios-app-icon player">♪</span>
         </button>
       </div>
@@ -631,8 +768,18 @@ function HomeScreen({ onOpen, now, weather }: { onOpen: (app: PhoneApp) => void;
   );
 }
 
+function BootScreen() {
+  return (
+    <div className="boot-screen" aria-hidden="true">
+      <img className="boot-logo" src="/fish-app-icon.png" alt="" />
+      <span className="boot-spinner" />
+    </div>
+  );
+}
+
 function AppScreen({
   app,
+  origin,
   photos,
   isPlaying,
   beatPulse,
@@ -647,6 +794,7 @@ function AppScreen({
   now
 }: {
   app: PhoneApp;
+  origin: string;
   photos: GalleryPhoto[];
   isPlaying: boolean;
   beatPulse: number;
@@ -657,7 +805,7 @@ function AppScreen({
   onTilt: (event: MouseEvent<HTMLDivElement>) => void;
   onResetTilt: () => void;
   onTogglePlayback: () => void;
-  onOpenApp: (app: PhoneApp) => void;
+  onOpenApp: (app: PhoneApp, event?: MouseEvent<HTMLElement>) => void;
   now: Date;
 }) {
   const title =
@@ -675,11 +823,16 @@ function AppScreen({
                 ? "Karaoke"
                 : app === "catering"
                   ? "Catering"
-                  : ".fish Player";
+                  : app === "nachtbus"
+                    ? "Nachtbus"
+                    : ".fish Player";
 
   return (
-    <div className={`ios-app-screen app-${app}`}>
+    <div className={`ios-app-screen app-${app}`} style={{ transformOrigin: origin }}>
       <header className="ios-app-header">
+        <button type="button" className="ios-app-back" onClick={() => onOpenApp("home")} aria-label="Zurück zum Home-Bildschirm">
+          ‹
+        </button>
         <strong>{title}</strong>
       </header>
       {app === "photos" && (
@@ -725,6 +878,7 @@ function AppScreen({
       {app === "dresscode" && <DresscodeApp />}
       {app === "karaoke" && <KaraokeApp />}
       {app === "catering" && <CateringApp />}
+      {app === "nachtbus" && <NachtbusApp />}
       {app === "player" && (
         <div className="ios-player-app" style={{ "--beat": beatPulse } as CSSProperties}>
           <div
@@ -911,6 +1065,73 @@ function CateringApp() {
           <li>Longdrink-Basis</li>
         </ul>
       </div>
+    </div>
+  );
+}
+
+function NachtbusApp() {
+  const [destination, setDestination] = useState("");
+  const [time, setTime] = useState("01:00");
+
+  const start = "Wendelinstraße 94, Aachen";
+  const encodedStart = encodeURIComponent(start);
+  const encodedDestination = encodeURIComponent(destination.trim());
+  const [hourPart, minutePart] = time.split(":").map(Number);
+  const routeHour = Number.isFinite(hourPart) ? hourPart : 1;
+  const routeMinute = Number.isFinite(minutePart) ? minutePart : 0;
+  // Before 19:00 counts as the early morning after the party (next day).
+  const routeDate = new Date(2026, 5, routeHour >= 19 ? 27 : 28, routeHour, routeMinute);
+  const departureTime = Math.floor(routeDate.getTime() / 1000);
+  const mapsRouteUrl = destination.trim()
+    ? `https://www.google.com/maps/dir/?api=1&origin=${encodedStart}&destination=${encodedDestination}&travelmode=transit&departure_time=${departureTime}`
+    : "";
+
+  return (
+    <div className="ios-nachtbus-app">
+      <div className="nachtbus-sign">
+        <small>ASEAG Nachtbus</small>
+        <strong>Heimweg planen</strong>
+        <span>Start ist die Party. Sag uns Ziel und Uhrzeit.</span>
+      </div>
+      <div className="nachtbus-stops">
+        <div>
+          <b>Start</b>
+          <span>Wendelinstraße 94</span>
+        </div>
+        <div>
+          <b>Haltestelle</b>
+          <span>Brand Steinbrück</span>
+        </div>
+        <div>
+          <b>Modus</b>
+          <span>Nachtbus / Taxi-Backup</span>
+        </div>
+      </div>
+      <label>
+        Zieladresse
+        <input
+          value={destination}
+          onChange={(event) => setDestination(event.target.value)}
+          placeholder="z. B. Aachen Hbf oder deine Adresse"
+        />
+      </label>
+      <label>
+        Losgehen gegen
+        <input type="time" value={time} onChange={(event) => setTime(event.target.value)} aria-label="Uhrzeit für den Heimweg" />
+      </label>
+      <a
+        className={`nachtbus-route-button ${mapsRouteUrl ? "" : "disabled"}`}
+        href={mapsRouteUrl || undefined}
+        target="_blank"
+        rel="noreferrer"
+        aria-disabled={!mapsRouteUrl}
+      >
+        Route in Google Maps
+      </a>
+      <a className="nachtbus-link" href="https://www.aseag.de/fahrplan/auskunft" target="_blank" rel="noreferrer">
+        ASEAG Fahrplan öffnen
+      </a>
+      <p className="nachtbus-hint">Tipp: Geplante Uhrzeit {time} Uhr ab der Party-Adresse.</p>
     </div>
   );
 }

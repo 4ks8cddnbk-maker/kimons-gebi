@@ -30,7 +30,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (hasAccess) {
-    if (isDocumentRequest && !["/fish-v2", "/walls", "/party"].includes(refererPath) && pathname !== "/fish-v2") {
+    if (isDocumentRequest && !["/fish-v2", "/walls"].includes(refererPath) && pathname !== "/fish-v2") {
       const url = request.nextUrl.clone();
       url.pathname = "/fish-v2";
       return NextResponse.redirect(url);

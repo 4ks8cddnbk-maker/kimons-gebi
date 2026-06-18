@@ -2203,62 +2203,48 @@ footer {
 }
 
 /* iOS phone shell */
+/* "You are the phone": the viewport IS the iPhone 4 front face. No steel band,
+   no desk framing. Just the glass, the OS, and a hardware home button chin. */
 .fish-phone-page {
-  min-height: 100vh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: clamp(16px, 3vw, 38px);
+  padding: 0;
   box-sizing: border-box;
   color: #fff;
-  background:
-    radial-gradient(circle at 50% -8%, rgba(255, 255, 255, 0.72), transparent 24%),
-    radial-gradient(circle at 20% 12%, rgba(97, 188, 226, 0.42), transparent 28%),
-    radial-gradient(circle at 78% 82%, rgba(60, 118, 157, 0.36), transparent 28%),
-    linear-gradient(145deg, #0a1526, #2b4968 46%, #b8d6e4);
-  overflow-x: hidden;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: linear-gradient(165deg, #05080f, #15243a 52%, #070f1b);
+  overflow: hidden;
 }
 
 .iphone-stage {
-  width: min(390px, calc(100vw - 18px), 48svh);
-  display: grid;
-  place-items: center;
-  perspective: 1200px;
+  position: relative;
+  width: min(440px, 100vw);
+  height: 100svh;
+  display: block;
 }
 
 .iphone-device {
   position: relative;
   width: 100%;
-  aspect-ratio: 9 / 18.6;
-  padding: 18px 12px 64px;
-  background:
-    linear-gradient(90deg, #090b10, #2f353f 3%, #0a0c11 8% 92%, #4f5660 97%, #10131a),
-    #111;
-  border: 2px solid rgba(255, 255, 255, 0.34);
-  border-radius: 56px;
-  box-shadow:
-    0 42px 120px rgba(0, 0, 0, 0.48),
-    inset 0 0 0 3px rgba(255, 255, 255, 0.08),
-    inset 10px 0 18px rgba(255, 255, 255, 0.08),
-    inset -8px 0 16px rgba(0, 0, 0, 0.72);
-  transform: rotateX(1.5deg);
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), filter 0.45s ease;
+  height: 100%;
+  padding: 0 0 clamp(40px, 8svh, 56px);
+  background: #000;
+  border: 0;
+  border-radius: 0;
+  box-shadow: 0 0 90px rgba(0, 0, 0, 0.65);
+  transform: none;
+  transition: none;
 }
 
 .iphone-device:hover {
-  transform: rotateX(0.4deg) translateY(-4px);
-  filter: saturate(1.05);
+  transform: none;
+  filter: none;
 }
 
 .iphone-speaker {
-  position: absolute;
-  top: 13px;
-  left: 50%;
-  width: 92px;
-  height: 8px;
-  background: linear-gradient(#05070a, #202733);
-  border-radius: 999px;
-  transform: translateX(-50%);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.18);
+  display: none;
 }
 
 .iphone-screen {
@@ -2267,10 +2253,8 @@ footer {
   height: 100%;
   overflow: hidden;
   background: #101923;
-  border-radius: 36px;
-  box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.16),
-    inset 0 0 28px rgba(0, 0, 0, 0.42);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .iphone-screen::after {
@@ -2279,9 +2263,7 @@ footer {
   inset: 0;
   z-index: 20;
   pointer-events: none;
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.34) 0 8%, transparent 20% 100%),
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18), transparent 34%);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0 4%, transparent 16% 100%);
   mix-blend-mode: screen;
 }
 
@@ -3205,9 +3187,9 @@ footer {
 .iphone-home-button {
   position: absolute;
   left: 50%;
-  bottom: 12px;
-  width: 44px;
-  height: 44px;
+  bottom: clamp(2px, 1.6svh, 9px);
+  width: clamp(36px, 6.2svh, 44px);
+  height: clamp(36px, 6.2svh, 44px);
   display: grid;
   place-items: center;
   background: linear-gradient(#242830, #07090c);
@@ -3238,25 +3220,27 @@ footer {
 @media (max-width: 520px) {
   .fish-phone-page {
     min-height: 100svh;
-    padding: 6px;
+    padding: 0;
     overflow: hidden;
     place-items: center;
   }
 
   .iphone-stage {
-    width: min(340px, calc(100vw - 12px), 51svh);
+    width: 100vw;
+    height: 100svh;
     margin-inline: auto;
   }
 
   .iphone-device {
     width: 100%;
-    aspect-ratio: 9 / 17.45;
-    border-radius: 44px;
-    padding: 14px 9px 50px;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+    padding: 0 0 clamp(38px, 7svh, 50px);
   }
 
   .iphone-screen {
-    border-radius: 30px;
+    border-radius: 0;
   }
 
   .ios-app-icon {
@@ -5608,5 +5592,587 @@ button.delete-post-button:hover,
 
   .wall-music-player:not(.collapsed) ~ .fish-toast {
     bottom: 112px;
+  }
+}
+
+/* =========================================================================
+   iOS 4 authenticity pass 1 — lock screen, gel icons, app-open, Nachtbus
+   ========================================================================= */
+
+/* --- Status glyphs (signal + battery) shared by lock + home --- */
+.ios-signal::before {
+  content: "▮▮▮▮▯";
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.ios-battery {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 11px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.95;
+}
+
+.ios-battery::before {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  width: 74%;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.ios-battery::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 3px;
+  width: 2px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+
+/* --- Lock screen face: big clock, date, slide-to-unlock --- */
+.ios-lock-face {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: clamp(18px, 6svh, 54px);
+}
+
+.ios-lock-clock {
+  font-size: clamp(58px, 17vw, 84px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.ios-lock-date {
+  margin-top: 4px;
+  font-size: clamp(15px, 4.4vw, 19px);
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+.slide-to-unlock {
+  position: relative;
+  width: min(300px, 78vw);
+  height: 60px;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.slide-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-left: 36px;
+  font-size: 17px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.25) 30%, #fff 50%, rgba(255, 255, 255, 0.25) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: slide-shimmer 2.4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slide-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+.slide-knob {
+  position: relative;
+  z-index: 2;
+  width: 56px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #6c7686;
+  background: linear-gradient(#ffffff, #d3dae4 52%, #b9c2cf);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), inset 0 1px 0 #fff;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-knob.dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+/* The unlocked status bar (home + apps) also gets glyphs */
+.ios-statusbar .ios-signal,
+.ios-lock-status .ios-signal {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* --- Glossy "gel" icons: classic iOS top-half reflection --- */
+.ios-app-icon {
+  position: relative;
+}
+
+.ios-app-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 48%;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.08));
+  -webkit-mask: radial-gradient(120% 90% at 50% -32%, #000 56%, transparent 60%);
+  mask: radial-gradient(120% 90% at 50% -32%, #000 56%, transparent 60%);
+  z-index: 3;
+}
+
+.ios-app-icon.nachtbus {
+  color: #eaf3ff;
+  font-size: 38px;
+  background:
+    radial-gradient(circle at 74% 22%, rgba(255, 255, 255, 0.85), transparent 16%),
+    radial-gradient(circle at 30% 70%, rgba(120, 180, 255, 0.4), transparent 40%),
+    linear-gradient(150deg, #1b2c4a, #25406d 55%, #0c1830);
+}
+
+/* --- App-open zoom (tap an icon, the app grows into place) --- */
+.ios-app-screen {
+  animation: app-open 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: 50% 46%;
+}
+
+@keyframes app-open {
+  from { opacity: 0; transform: scale(0.84); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Nachtbus (transit) app --- */
+.ios-nachtbus-app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 28px;
+  overflow: auto;
+  color: #14233a;
+}
+
+.nachtbus-sign {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  color: #fff7d6;
+  text-align: center;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 10px),
+    linear-gradient(150deg, #15233c, #243a5e 60%, #101b30);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.nachtbus-sign small {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.nachtbus-sign strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.nachtbus-sign span {
+  font-size: 13px;
+  opacity: 0.86;
+}
+
+.nachtbus-stops {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.nachtbus-stops div {
+  display: grid;
+  gap: 3px;
+  padding: 9px 8px;
+  background: linear-gradient(#ffffff, #e8eff7);
+  border: 1px solid rgba(120, 145, 175, 0.45);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.nachtbus-stops b {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a7790;
+}
+
+.nachtbus-stops span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ios-nachtbus-app label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3a4a63;
+}
+
+.ios-nachtbus-app input {
+  padding: 11px 12px;
+  font-size: 15px;
+  color: #14233a;
+  background: linear-gradient(#ffffff, #eef3f9);
+  border: 1px solid rgba(120, 145, 175, 0.6);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 3px rgba(23, 40, 68, 0.16);
+}
+
+.nachtbus-route-button,
+.nachtbus-link {
+  display: block;
+  padding: 13px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: 12px;
+}
+
+.nachtbus-route-button {
+  color: #fff;
+  background: linear-gradient(#5fb6f4, #2179c9 52%, #1466b3);
+  border: 1px solid #1a5da0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 6px 14px rgba(20, 102, 179, 0.34);
+}
+
+.nachtbus-route-button.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
+.nachtbus-link {
+  color: #28456e;
+  background: linear-gradient(#ffffff, #dde7f2);
+  border: 1px solid rgba(120, 145, 175, 0.6);
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+.nachtbus-hint {
+  margin: 0;
+  font-size: 12px;
+  text-align: center;
+  color: #6a7790;
+}
+
+/* =========================================================================
+   iOS 4 pass 2 — standalone fullscreen, boot, motion, glass, notifications
+   ========================================================================= */
+
+/* --- True app-like fullscreen: lock the page, only apps scroll --- */
+body:has(.fish-phone-page) {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(.fish-phone-page) .global-contact-footer {
+  display: none;
+}
+
+.fish-phone-page {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+.fish-phone-page input,
+.fish-phone-page textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Momentum + rubber-band inside scrollable app surfaces */
+.ios-app-screen,
+.ios-photos-app,
+.ios-nachtbus-app,
+.ios-catering-app,
+.ios-dresscode-app,
+.ios-karaoke-app,
+.ios-notification-center {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* --- Safe-area awareness (notch / home indicator when installed) --- */
+.ios-statusbar {
+  height: calc(34px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.ios-lockscreen {
+  padding-top: calc(15px + env(safe-area-inset-top, 0px));
+}
+
+.ios-homescreen {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+}
+
+.ios-app-header {
+  top: env(safe-area-inset-top, 0px);
+}
+
+.ios-app-screen {
+  padding-top: calc(82px + env(safe-area-inset-top, 0px));
+}
+
+.iphone-device {
+  padding-bottom: calc(clamp(40px, 8svh, 56px) + env(safe-area-inset-bottom, 0px));
+}
+
+.iphone-home-button {
+  bottom: calc(clamp(2px, 1.6svh, 9px) + env(safe-area-inset-bottom, 0px));
+}
+
+/* --- Boot sequence: black → logo + spinner → reveal --- */
+.boot-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 26px;
+  background: #000;
+  animation: boot-fade 2.4s ease forwards;
+}
+
+.boot-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  filter: drop-shadow(0 6px 22px rgba(120, 200, 255, 0.4));
+  animation: boot-logo 2.4s ease forwards;
+}
+
+.boot-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  opacity: 0;
+  animation: boot-spin 0.9s linear infinite, boot-spinner-in 2.4s ease forwards;
+}
+
+@keyframes boot-logo {
+  0% { opacity: 0; transform: scale(0.78); }
+  22% { opacity: 1; transform: scale(1); }
+  82% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+
+@keyframes boot-spinner-in {
+  0%, 30% { opacity: 0; }
+  45%, 80% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes boot-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes boot-fade {
+  0%, 86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* --- Icon press bounce (tap feedback) --- */
+.ios-app:active .ios-app-icon {
+  transform: scale(0.88);
+  transition: transform 0.08s ease;
+}
+
+/* --- Dock glass reflection under the dock icons --- */
+.ios-dock::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+/* --- Living glass: a slow reflective sweep + edge vignette over everything --- */
+.iphone-device::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.06) 46%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.05) 54%, transparent 62%);
+  background-size: 280% 100%;
+  animation: glass-sweep 9s ease-in-out infinite;
+}
+
+.iphone-device::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+@keyframes glass-sweep {
+  0%, 100% { background-position: 140% 0; }
+  50% { background-position: -40% 0; }
+}
+
+/* --- Slide-to-unlock onboarding hint (pulsing chevrons) --- */
+.slide-hint {
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  animation: slide-hint 1.8s ease-in-out infinite;
+}
+
+@keyframes slide-hint {
+  0%, 100% { opacity: 0.25; transform: translate(0, -50%); }
+  50% { opacity: 0.8; transform: translate(6px, -50%); }
+}
+
+/* --- App header back button (consistent return path) --- */
+.ios-app-back {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 32px;
+  font-size: 30px;
+  line-height: 1;
+  color: #1f5fa6;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/* --- Pull-down Notification Center: dark smoked glass --- */
+.notification-grabber {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(30px + env(safe-area-inset-top, 0px));
+  z-index: 22;
+  background: transparent;
+  border: 0;
+  cursor: grab;
+}
+
+.notification-grabber::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  right: auto;
+  width: 40px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.ios-notification-center {
+  padding: calc(54px + env(safe-area-inset-top, 0px)) 14px 26px;
+  color: #f3f7fb;
+  background:
+    radial-gradient(circle at 50% -6%, rgba(120, 180, 230, 0.22), transparent 32%),
+    linear-gradient(180deg, rgba(10, 18, 30, 0.93), rgba(6, 12, 22, 0.96));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ios-notification-center .notification-time strong {
+  color: #fff;
+}
+
+.lockscreen-player,
+.phone-notification,
+.notification-center-head {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 24px rgba(0, 0, 0, 0.3);
+}
+
+.ios-notification-center .lockscreen-player span,
+.ios-notification-center .phone-notification small {
+  color: rgba(220, 235, 250, 0.7);
+}
+
+.ios-notification-center .phone-notification > button:first-child {
+  color: #eef4fa;
+}
+
+.ios-notification-center .notification-center-head strong,
+.ios-notification-center .phone-notification strong {
+  color: #fff;
+}
+
+/* Reduced motion: honour the OS accessibility setting */
+@media (prefers-reduced-motion: reduce) {
+  .iphone-device::before,
+  .slide-hint,
+  .boot-logo,
+  .boot-spinner {
+    animation: none;
+  }
+  .ios-app-screen {
+    animation: none;
   }
 }
