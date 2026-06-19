@@ -36,6 +36,8 @@ type PhoneNotification = {
 };
 
 const pinCode = "2406";
+const siteCookieName = "kimon_v2_access";
+const siteCookieValue = "fish-v2-ok";
 const appIcons: Array<{ id: PhoneApp; label: string; className: string; icon: string }> = [
   { id: "calendar", label: "Kalender", className: "calendar", icon: "27" },
   { id: "photos", label: "Fotos", className: "photos", icon: "✿" },
@@ -375,6 +377,7 @@ export default function FishV2Gate() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pinCode })
     });
+    document.cookie = `${siteCookieName}=${siteCookieValue}; path=/; SameSite=Lax`;
     setUnlocked(true);
     setActiveApp("home");
   }
@@ -923,7 +926,7 @@ function AppScreen({
       )}
       {app === "fish" && (
         <div className="ios-fish-app">
-          <iframe title=".fish" src="/walls" />
+          <iframe title=".fish" src="/walls?inside=phone" />
         </div>
       )}
       {app === "calendar" && <CalendarApp onOpenMaps={() => onOpenApp("maps")} />}

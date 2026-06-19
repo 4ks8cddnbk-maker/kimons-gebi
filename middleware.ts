@@ -7,6 +7,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicPath = publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const hasAccess = request.cookies.get(SITE_COOKIE_NAME)?.value === SITE_COOKIE_VALUE;
+  const isPhoneEmbed = request.nextUrl.searchParams.get("inside") === "phone";
   const accept = request.headers.get("accept") || "";
   const fetchDestination = request.headers.get("sec-fetch-dest") || "";
   const isDocumentRequest = fetchDestination === "document" || (!pathname.startsWith("/api/") && accept.includes("text/html"));
@@ -30,6 +31,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (hasAccess) {
+    if (pathname === "/walls" && isPhoneEmbed) {
+      return NextResponse.next();
+    }
+
     if (isDocumentRequest && !["/fish-v2", "/walls"].includes(refererPath) && pathname !== "/fish-v2") {
       const url = request.nextUrl.clone();
       url.pathname = "/fish-v2";
