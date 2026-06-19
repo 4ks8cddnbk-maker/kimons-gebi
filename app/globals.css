@@ -1501,25 +1501,29 @@ figcaption {
 
 .wheel button {
   position: absolute;
-  color: #667083;
+  color: #2b3442;
   background: transparent;
   border: 0;
   cursor: pointer;
-  font-weight: 900;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
   transition: color 140ms ease, transform 140ms ease, background 140ms ease;
 }
 
-.wheel button:hover {
+.wheel button:hover,
+.wheel button:active {
   color: #155f9f;
 }
 
 .wheel button:disabled {
-  color: #7a8494;
+  color: #36404e;
   cursor: default;
 }
 
 .wheel button:disabled:hover {
-  color: #7a8494;
+  color: #36404e;
 }
 
 .wheel button:nth-child(1) {
@@ -5600,10 +5604,11 @@ button.delete-post-button:hover,
    ========================================================================= */
 
 /* --- Status glyphs (signal + battery) shared by lock + home --- */
+/* iPhone-OS-era signal strength: five dots, not bars. */
 .ios-signal::before {
-  content: "▮▮▮▮▯";
-  font-size: 10px;
-  letter-spacing: 1px;
+  content: "●●●●○";
+  font-size: 9px;
+  letter-spacing: 1.5px;
 }
 
 .ios-battery {
@@ -5952,7 +5957,7 @@ body:has(.fish-phone-page) .global-contact-footer {
 }
 
 .ios-app-header {
-  top: env(safe-area-inset-top, 0px);
+  top: calc(34px + env(safe-area-inset-top, 0px));
 }
 
 .ios-app-screen {
@@ -6175,4 +6180,457 @@ body:has(.fish-phone-page) .global-contact-footer {
   .ios-app-screen {
     animation: none;
   }
+}
+
+/* =========================================================================
+   iOS 4 pass 3 — living weather sky, maps pin, calendar, settings, alerts
+   ========================================================================= */
+
+/* --- Living weather sky widget --- */
+.ios-weather-widget {
+  position: relative;
+  display: block;
+  min-height: 116px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 14px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: none;
+}
+
+.weather-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transition: background 1s ease;
+}
+
+.sky-day .weather-sky { background: linear-gradient(#73bdf0, #b7e0f7 70%, #dff1fb); }
+.sky-golden .weather-sky { background: linear-gradient(#ff9e57, #ffc489 45%, #ffe6bf); }
+.sky-night .weather-sky { background: linear-gradient(#091633, #142c57 55%, #2a4a7d); }
+
+.weather-info,
+.ios-weather-widget ul {
+  position: relative;
+  z-index: 2;
+}
+
+.weather-info small { font-size: 12px; font-weight: 700; opacity: 0.92; }
+.weather-info strong { display: block; font-size: 44px; font-weight: 300; line-height: 0.96; letter-spacing: -1px; }
+.weather-info span { font-size: 13px; font-weight: 700; }
+
+.ios-weather-widget ul {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Text colour adapts to sky brightness */
+.sky-day .weather-info,
+.sky-day .ios-weather-widget ul,
+.sky-golden .weather-info,
+.sky-golden .ios-weather-widget ul,
+.sky-day .ios-weather-widget li,
+.sky-golden .ios-weather-widget li {
+  color: #16304d;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.sky-night .weather-info,
+.sky-night .ios-weather-widget ul,
+.sky-night .ios-weather-widget li {
+  color: #eaf2ff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Sun */
+.sky-sun {
+  position: absolute;
+  right: 26px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fff6cf, #ffc24d 60%, rgba(255, 168, 56, 0.85));
+  box-shadow: 0 0 34px 8px rgba(255, 206, 92, 0.55);
+  opacity: 0;
+}
+
+.sky-day .sky-sun { opacity: 1; animation: sun-glow 5s ease-in-out infinite; }
+.sky-golden .sky-sun {
+  opacity: 1;
+  top: 52px;
+  background: radial-gradient(circle at 38% 34%, #fff1c0, #ff9436 70%);
+  box-shadow: 0 0 38px 10px rgba(255, 132, 54, 0.5);
+}
+.cond-clouds .sky-sun, .cond-rain .sky-sun, .cond-storm .sky-sun, .cond-snow .sky-sun { opacity: 0.55; }
+
+@keyframes sun-glow {
+  0%, 100% { box-shadow: 0 0 34px 8px rgba(255, 206, 92, 0.5); }
+  50% { box-shadow: 0 0 44px 12px rgba(255, 206, 92, 0.7); }
+}
+
+/* Moon + stars (night) */
+.sky-moon {
+  position: absolute;
+  right: 30px;
+  top: 18px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #fdfbe9, #d6ddf0 70%);
+  box-shadow: 0 0 24px 4px rgba(220, 230, 255, 0.45), inset -10px -6px 0 -2px rgba(9, 22, 51, 0.6);
+  opacity: 0;
+}
+.sky-night .sky-moon { opacity: 1; }
+
+.sky-stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image:
+    radial-gradient(1.4px 1.4px at 18% 30%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 42% 18%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 62% 40%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 80% 22%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 30% 62%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 88% 60%, #fff, transparent);
+}
+.sky-night .sky-stars { opacity: 0.9; animation: stars-twinkle 4s ease-in-out infinite; }
+
+@keyframes stars-twinkle {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+/* Clouds */
+.sky-cloud {
+  position: absolute;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 18px 4px 0 -2px rgba(255, 255, 255, 0.8), -16px 5px 0 -3px rgba(255, 255, 255, 0.7);
+  opacity: 0;
+}
+.sky-cloud.c1 { width: 52px; top: 22px; left: 18px; }
+.sky-cloud.c2 { width: 40px; top: 52px; left: 46%; }
+.sky-cloud.c3 { width: 60px; top: 70px; left: 24%; }
+.sky-night .sky-cloud { background: rgba(180, 195, 225, 0.5); box-shadow: 18px 4px 0 -2px rgba(180,195,225,0.4), -16px 5px 0 -3px rgba(180,195,225,0.35); }
+
+.cond-clouds .sky-cloud,
+.cond-rain .sky-cloud,
+.cond-storm .sky-cloud,
+.cond-snow .sky-cloud {
+  opacity: 1;
+  animation: cloud-drift 14s ease-in-out infinite;
+}
+.cond-clouds .sky-cloud.c2, .cond-rain .sky-cloud.c2 { animation-delay: -5s; }
+.cond-clouds .sky-cloud.c3, .cond-rain .sky-cloud.c3 { animation-delay: -9s; }
+
+@keyframes cloud-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(16px); }
+}
+
+/* Rain */
+.sky-rain {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image: repeating-linear-gradient(74deg, rgba(255, 255, 255, 0.45) 0 1px, transparent 1px 9px);
+  background-size: 12px 18px;
+}
+.cond-rain .sky-rain, .cond-storm .sky-rain { opacity: 0.7; animation: rain-fall 0.55s linear infinite; }
+
+@keyframes rain-fall {
+  from { background-position: 0 0; }
+  to { background-position: -6px 18px; }
+}
+
+/* --- Maps pin-drop + pulsing location dot --- */
+.ios-maps-app { position: relative; }
+
+.map-pin-overlay {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  z-index: 3;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.map-pin {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: radial-gradient(circle at 35% 30%, #ff8a80, #e0352b 70%);
+  border: 2px solid #fff;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.35);
+  animation: pin-drop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.map-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+
+.map-pin-pulse {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 16px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(40, 110, 200, 0.5);
+  transform: translateX(-50%);
+  animation: pin-pulse 2s ease-out infinite;
+}
+
+@keyframes pin-drop {
+  0% { transform: rotate(-45deg) translateY(-120px); opacity: 0; }
+  60% { transform: rotate(-45deg) translateY(0); opacity: 1; }
+  78% { transform: rotate(-45deg) translateY(-12px); }
+  100% { transform: rotate(-45deg) translateY(0); }
+}
+
+@keyframes pin-pulse {
+  0% { transform: translateX(-50%) scale(0.5); opacity: 0.7; }
+  100% { transform: translateX(-50%) scale(2.6); opacity: 0; }
+}
+
+/* --- Calendar: leather, torn edge, today ring, page flip --- */
+.ios-calendar-app {
+  padding: 14px;
+  perspective: 900px;
+}
+
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  color: #fff;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 4px),
+    linear-gradient(#7a5c3a, #5d4327 60%, #46301c);
+  border-radius: 12px 12px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.calendar-toolbar button {
+  color: #ffe9c9;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+}
+
+.calendar-toolbar strong { font-size: 17px; }
+
+.calendar-page {
+  background: linear-gradient(#ffffff, #f1f3f6);
+  border: 1px solid rgba(120, 145, 175, 0.4);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: cal-flip 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* perforation between leather header and page */
+.calendar-week {
+  position: relative;
+  border-top: 2px dotted rgba(120, 90, 58, 0.5);
+}
+
+@keyframes cal-flip {
+  from { transform: rotateX(-78deg); opacity: 0; }
+  to { transform: rotateX(0); opacity: 1; }
+}
+
+.calendar-empty { visibility: hidden; }
+
+.birthday-day {
+  position: relative;
+  color: #c8102e;
+  font-weight: 800;
+}
+.birthday-day::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #c8102e;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(200, 16, 46, 0.4);
+}
+
+/* --- Settings app: grouped chrome tables + green toggles --- */
+.ios-app-icon.settings {
+  color: #4a525e;
+  font-size: 40px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.95), transparent 26%),
+    linear-gradient(145deg, #e7eaee, #aab2bd 55%, #7d8794);
+}
+
+.ios-settings-app {
+  height: 100%;
+  padding: 16px 14px 28px;
+  overflow: auto;
+  color: #14233a;
+  background: linear-gradient(#cdd5df, #c2cad6);
+}
+
+.settings-group-title {
+  margin: 14px 6px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #5a6577;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.settings-group-title:first-child { margin-top: 2px; }
+
+.settings-group {
+  border: 1px solid rgba(120, 140, 168, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(23, 40, 68, 0.12);
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(#ffffff, #f3f6fa);
+  border-bottom: 1px solid rgba(120, 140, 168, 0.3);
+}
+.settings-row:last-child { border-bottom: 0; }
+.settings-row b { color: #41506b; font-weight: 700; }
+
+.settings-footnote {
+  margin: 16px 6px 0;
+  font-size: 12px;
+  text-align: center;
+  color: #5a6577;
+}
+
+.ios-toggle {
+  position: relative;
+  width: 52px;
+  height: 31px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(#c9cdd3, #eef0f3);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.ios-toggle.on {
+  background: linear-gradient(#5fce5a, #36b13a);
+  border-color: #2c9a30;
+}
+.ios-toggle-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: linear-gradient(#ffffff, #e7eaee);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ios-toggle.on .ios-toggle-knob { transform: translateX(21px); }
+
+/* --- Skeuomorphic blue Aqua alert (replaces toasts for confirmations) --- */
+.aqua-alert-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+  animation: aqua-alert-fade 0.2s ease;
+}
+
+.aqua-alert {
+  width: min(280px, 100%);
+  padding: 18px 16px 0;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(rgba(60, 80, 110, 0.96), rgba(28, 40, 60, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 24px 50px rgba(0, 0, 0, 0.5);
+  animation: aqua-alert-pop 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aqua-alert strong { display: block; font-size: 18px; font-weight: 800; }
+.aqua-alert p { margin: 8px 0 14px; font-size: 14px; opacity: 0.92; }
+
+.aqua-alert button {
+  width: calc(100% + 32px);
+  margin: 0 -16px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(#5aa6e8, #2f74c4 52%, #1f5da6);
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0 0 16px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+}
+.aqua-alert button:active { filter: brightness(0.94); }
+
+@keyframes aqua-alert-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aqua-alert-pop {
+  from { transform: scale(0.82); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* --- Type polish: tighter Helvetica app labels + crisp icon shadow --- */
+.ios-app strong {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.ios-app-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.12),
+    0 2px 2px rgba(0, 0, 0, 0.18),
+    0 8px 16px rgba(0, 0, 0, 0.24);
 }

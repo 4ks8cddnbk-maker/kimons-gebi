@@ -8,8 +8,18 @@ import {
   seekSyncedRadioAudio,
   type FishRadioSlot
 } from "@/lib/fishRadio";
+import { playClick, playKey, playLock, playTritone, playUnlock, isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 
-type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus";
+// Lightweight global so any in-phone screen can raise a skeuomorphic blue alert
+// without prop-drilling. FishV2Gate listens for these events and renders it.
+type AquaAlertDetail = { title: string; body: string };
+function fireAquaAlert(title: string, body: string) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<AquaAlertDetail>("aqua-alert", { detail: { title, body } }));
+  }
+}
+
+type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus" | "settings";
 type GalleryPhoto = { url: string; caption?: string; uploadedAt?: string };
 type Weather = { temperature: number; label: string };
 type WallProfile = { id: string; name: string; handle: string; avatar?: string; createdAt: string };
@@ -35,7 +45,8 @@ const appIcons: Array<{ id: PhoneApp; label: string; className: string; icon: st
   { id: "dresscode", label: "Dresscode", className: "dresscode", icon: "◆" },
   { id: "karaoke", label: "Karaoke", className: "karaoke", icon: "♫" },
   { id: "catering", label: "Catering", className: "catering", icon: "☕" },
-  { id: "player", label: "Player", className: "player", icon: "♪" }
+  { id: "player", label: "Player", className: "player", icon: "♪" },
+  { id: "settings", label: "Einstellungen", className: "settings", icon: "⚙" }
 ];
 
 const keypad = [
@@ -75,12 +86,16 @@ function relativeTime(value: string, now: Date) {
 }
 
 function vibrate(pattern: number | number[]) {
-  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-    try {
-      navigator.vibrate(pattern);
-    } catch {
-      // Some browsers throw on vibrate inside non-user gestures; ignore.
-    }
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  try {
+    if (window.localStorage.getItem("fish-haptics-enabled-v1") === "0") return;
+  } catch {
+    // ignore storage errors and vibrate anyway
+  }
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    // Some browsers throw on vibrate inside non-user gestures; ignore.
   }
 }
 
@@ -98,6 +113,7 @@ export default function FishV2Gate() {
   const [unlocked, setUnlocked] = useState(false);
   const [booting, setBooting] = useState(true);
   const [openOrigin, setOpenOrigin] = useState("50% 46%");
+  const [aquaAlert, setAquaAlert] = useState<AquaAlertDetail | null>(null);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [activeApp, setActiveApp] = useState<PhoneApp>("home");
@@ -124,6 +140,7 @@ export default function FishV2Gate() {
   const pendingRadioStartRef = useRef<FishRadioSlot | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const lastNotifIdRef = useRef("");
 
   const displaySlot = radioStarted ? getFishRadioSlot(radioNow) : radioSlot;
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
@@ -199,6 +216,14 @@ export default function FishV2Gate() {
     // Boot sequence runs once per page load: black → logo → lock screen.
     const timer = window.setTimeout(() => setBooting(false), 2400);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    function onAlert(event: Event) {
+      setAquaAlert((event as CustomEvent<AquaAlertDetail>).detail);
+    }
+    window.addEventListener("aqua-alert", onAlert);
+    return () => window.removeEventListener("aqua-alert", onAlert);
   }, []);
 
   useEffect(() => {
@@ -289,6 +314,16 @@ export default function FishV2Gate() {
   }, [phoneNotifications, pushEnabled]);
 
   useEffect(() => {
+    const newest = phoneNotifications[0];
+    if (!newest) return;
+    if (lastNotifIdRef.current && lastNotifIdRef.current !== newest.id) {
+      playTritone();
+      vibrate([30, 40, 30]);
+    }
+    lastNotifIdRef.current = newest.id;
+  }, [phoneNotifications]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.load();
@@ -334,6 +369,7 @@ export default function FishV2Gate() {
     }
 
     vibrate(18);
+    playUnlock();
     await fetch("/api/site-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -346,6 +382,7 @@ export default function FishV2Gate() {
   function pressDigit(digit: string) {
     if (pin.length >= 4 || pinError) return;
     vibrate(5);
+    playKey();
     const nextPin = `${pin}${digit}`;
     setPin(nextPin);
     if (nextPin.length === 4) submitPin(nextPin);
@@ -354,6 +391,8 @@ export default function FishV2Gate() {
   function launchApp(app: PhoneApp, event?: MouseEvent<HTMLElement>) {
     if (event) setOpenOrigin(originFromEvent(event));
     vibrate(8);
+    if (app === "home") playLock();
+    else playClick();
     setActiveApp(app);
   }
 
@@ -542,6 +581,7 @@ export default function FishV2Gate() {
                   onClick={() => setNotificationCenterOpen((value) => !value)}
                   aria-label="Benachrichtigungen öffnen"
                 />
+                {aquaAlert && <AquaAlert title={aquaAlert.title} body={aquaAlert.body} onClose={() => setAquaAlert(null)} />}
                 {notificationCenterOpen && (
                   <NotificationCenter
                     now={now}
@@ -729,18 +769,7 @@ function HomeScreen({
   return (
     <div className="ios-homescreen">
       <div className="ios-wallpaper" />
-      <section className="ios-weather-widget" aria-label="Kimons Geburtstag">
-        <div>
-          <small>Aachen</small>
-          <strong>{weather ? `${weather.temperature}°` : "--°"}</strong>
-          <span>{weather?.label || "Wetter lädt"}</span>
-        </div>
-        <i />
-        <ul>
-          <li>{now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</li>
-          <li>Wendelinstraße 94</li>
-        </ul>
-      </section>
+      <WeatherWidget now={now} weather={weather} />
       <div className="ios-app-grid">
         {appIcons.map((app) => (
           <button key={app.id} type="button" className="ios-app" onClick={(event) => onOpen(app.id, event)}>
@@ -765,6 +794,49 @@ function HomeScreen({
         </button>
       </div>
     </div>
+  );
+}
+
+function skyPhase(hour: number) {
+  if (hour < 6 || hour >= 21) return "night";
+  if (hour < 8 || hour >= 19) return "golden";
+  return "day";
+}
+
+function skyCondition(label?: string) {
+  if (!label) return "clear";
+  if (/Regen/i.test(label)) return "rain";
+  if (/Schnee/i.test(label)) return "snow";
+  if (/Gewitter/i.test(label)) return "storm";
+  if (/Wolk|Nebel/i.test(label)) return "clouds";
+  return "clear";
+}
+
+function WeatherWidget({ now, weather }: { now: Date; weather: Weather | null }) {
+  const phase = skyPhase(now.getHours());
+  const cond = skyCondition(weather?.label);
+
+  return (
+    <section className={`ios-weather-widget sky-${phase} cond-${cond}`} aria-label="Wetter in Aachen">
+      <div className="weather-sky" aria-hidden="true">
+        <span className="sky-sun" />
+        <span className="sky-moon" />
+        <span className="sky-stars" />
+        <span className="sky-cloud c1" />
+        <span className="sky-cloud c2" />
+        <span className="sky-cloud c3" />
+        <span className="sky-rain" />
+      </div>
+      <div className="weather-info">
+        <small>Aachen</small>
+        <strong>{weather ? `${weather.temperature}°` : "--°"}</strong>
+        <span>{weather?.label || "Wetter lädt"}</span>
+      </div>
+      <ul>
+        <li>{now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</li>
+        <li>Wendelinstraße 94</li>
+      </ul>
+    </section>
   );
 }
 
@@ -825,7 +897,9 @@ function AppScreen({
                   ? "Catering"
                   : app === "nachtbus"
                     ? "Nachtbus"
-                    : ".fish Player";
+                    : app === "settings"
+                      ? "Einstellungen"
+                      : ".fish Player";
 
   return (
     <div className={`ios-app-screen app-${app}`} style={{ transformOrigin: origin }}>
@@ -861,6 +935,10 @@ function AppScreen({
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
+          <div className="map-pin-overlay" aria-hidden="true">
+            <span className="map-pin-pulse" />
+            <span className="map-pin" />
+          </div>
           <div className="map-pin-card">
             <small>Party-Ziel</small>
             <strong>Wendelinstraße 94, Aachen</strong>
@@ -879,6 +957,7 @@ function AppScreen({
       {app === "karaoke" && <KaraokeApp />}
       {app === "catering" && <CateringApp />}
       {app === "nachtbus" && <NachtbusApp />}
+      {app === "settings" && <SettingsApp />}
       {app === "player" && (
         <div className="ios-player-app" style={{ "--beat": beatPulse } as CSSProperties}>
           <div
@@ -942,25 +1021,32 @@ function AppScreen({
 
 function CalendarApp({ onOpenMaps }: { onOpenMaps: () => void }) {
   const days = Array.from({ length: 30 }, (_, index) => index + 1);
+  // Monday-first leading blanks so the 27th lands on the right weekday.
+  const leadingBlanks = (new Date(2026, 5, 1).getDay() + 6) % 7;
 
   return (
     <div className="ios-calendar-app">
       <div className="calendar-toolbar">
-        <button type="button">Today</button>
+        <button type="button">Heute</button>
         <strong>Juni 2026</strong>
         <button type="button">+</button>
       </div>
-      <div className="calendar-week">
-        {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((day) => (
-          <span key={day}>{day}</span>
-        ))}
-      </div>
-      <div className="calendar-grid">
-        {days.map((day) => (
-          <span className={day === 27 ? "birthday-day" : ""} key={day}>
-            {day}
-          </span>
-        ))}
+      <div className="calendar-page">
+        <div className="calendar-week">
+          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((day) => (
+            <span key={day}>{day}</span>
+          ))}
+        </div>
+        <div className="calendar-grid">
+          {Array.from({ length: leadingBlanks }, (_, index) => (
+            <span className="calendar-empty" key={`blank-${index}`} />
+          ))}
+          {days.map((day) => (
+            <span className={day === 27 ? "birthday-day" : ""} key={day}>
+              {day}
+            </span>
+          ))}
+        </div>
       </div>
       <article className="calendar-event">
         <small>27.06.2026 · 19:00</small>
@@ -1024,7 +1110,10 @@ function KaraokeApp() {
     const data = await response.json().catch(() => ({}));
     setState(response.ok ? "done" : "error");
     setMessage(data.message || (response.ok ? "Karaoke gespeichert." : "Das hat nicht geklappt."));
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      event.currentTarget.reset();
+      fireAquaAlert("Karaoke", "Dein Song ist eingetragen. Wir sehen uns am Mikro!");
+    }
   }
 
   return (
@@ -1132,6 +1221,107 @@ function NachtbusApp() {
         ASEAG Fahrplan öffnen
       </a>
       <p className="nachtbus-hint">Tipp: Geplante Uhrzeit {time} Uhr ab der Party-Adresse.</p>
+    </div>
+  );
+}
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className={`ios-toggle ${checked ? "on" : ""}`}
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="ios-toggle-knob" />
+    </button>
+  );
+}
+
+function SettingsApp() {
+  const [sound, setSound] = useState(true);
+  const [haptics, setHaptics] = useState(true);
+
+  useEffect(() => {
+    setSound(isSoundEnabled());
+    try {
+      setHaptics(window.localStorage.getItem("fish-haptics-enabled-v1") !== "0");
+    } catch {
+      setHaptics(true);
+    }
+  }, []);
+
+  return (
+    <div className="ios-settings-app">
+      <p className="settings-group-title">Allgemein</p>
+      <div className="settings-group">
+        <div className="settings-row">
+          <span>Töne</span>
+          <Toggle
+            checked={sound}
+            onChange={(value) => {
+              setSound(value);
+              setSoundEnabled(value);
+              if (value) playClick();
+            }}
+          />
+        </div>
+        <div className="settings-row">
+          <span>Vibration</span>
+          <Toggle
+            checked={haptics}
+            onChange={(value) => {
+              setHaptics(value);
+              try {
+                window.localStorage.setItem("fish-haptics-enabled-v1", value ? "1" : "0");
+              } catch {
+                // ignore
+              }
+              if (value && typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(12);
+            }}
+          />
+        </div>
+      </div>
+
+      <p className="settings-group-title">Über dieses Telefon</p>
+      <div className="settings-group">
+        <div className="settings-row">
+          <span>Name</span>
+          <b>Kimon</b>
+        </div>
+        <div className="settings-row">
+          <span>System</span>
+          <b>.fish OS 4</b>
+        </div>
+        <div className="settings-row">
+          <span>Modell</span>
+          <b>iPhone 4 · Kimon Edition</b>
+        </div>
+        <div className="settings-row">
+          <span>Anlass</span>
+          <b>23. Geburtstag</b>
+        </div>
+        <div className="settings-row">
+          <span>Termin</span>
+          <b>27.06.2026 · 19:00</b>
+        </div>
+      </div>
+      <p className="settings-footnote">Mit Liebe gebaut für Kimon. .fish FM 103.7</p>
+    </div>
+  );
+}
+
+function AquaAlert({ title, body, onClose }: { title: string; body: string; onClose: () => void }) {
+  return (
+    <div className="aqua-alert-backdrop" role="alertdialog" aria-modal="true">
+      <div className="aqua-alert">
+        <strong>{title}</strong>
+        <p>{body}</p>
+        <button type="button" onClick={onClose}>
+          OK
+        </button>
+      </div>
     </div>
   );
 }
