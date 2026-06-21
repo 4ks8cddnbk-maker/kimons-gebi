@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, MouseEvent, PointerEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   fishRadioSongs as tracks,
@@ -19,7 +19,7 @@ function fireAquaAlert(title: string, body: string) {
   }
 }
 
-type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus" | "settings";
+type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus" | "snake";
 type GalleryPhoto = { url: string; caption?: string; uploadedAt?: string };
 type Weather = { temperature: number; label: string };
 type WallProfile = { id: string; name: string; handle: string; avatar?: string; createdAt: string };
@@ -48,8 +48,9 @@ const appIcons: Array<{ id: PhoneApp; label: string; className: string; icon: st
   { id: "karaoke", label: "Karaoke", className: "karaoke", icon: "♫" },
   { id: "catering", label: "Catering", className: "catering", icon: "☕" },
   { id: "player", label: "Player", className: "player", icon: "♪" },
-  { id: "settings", label: "Einstellungen", className: "settings", icon: "⚙" }
+  { id: "snake", label: "Snake", className: "snake", icon: "" }
 ];
+const homeAppPages = [appIcons.slice(0, 9), appIcons.slice(9)];
 
 const keypad = [
   ["1", ""],
@@ -769,19 +770,62 @@ function HomeScreen({
   now: Date;
   weather: Weather | null;
 }) {
+  const [page, setPage] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  function finishSwipe(x: number) {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    if (start === null) return;
+    const delta = x - start;
+    if (Math.abs(delta) < 42) return;
+    setPage((current) => Math.min(homeAppPages.length - 1, Math.max(0, current + (delta < 0 ? 1 : -1))));
+  }
+
   return (
     <div className="ios-homescreen">
       <div className="ios-wallpaper" />
       <WeatherWidget now={now} weather={weather} />
-      <div className="ios-app-grid">
-        {appIcons.map((app) => (
-          <button key={app.id} type="button" className="ios-app" onClick={(event) => onOpen(app.id, event)}>
-            <span className={`ios-app-icon ${app.className}`}>
-              {app.id === "fish" ? <img src="/fish-app-icon.png" alt="" /> : app.icon}
-            </span>
-            <strong>{app.label}</strong>
-          </button>
-        ))}
+      <div
+        className="ios-home-pages"
+        onTouchStart={(event: TouchEvent<HTMLDivElement>) => {
+          touchStartX.current = event.touches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(event: TouchEvent<HTMLDivElement>) => {
+          finishSwipe(event.changedTouches[0]?.clientX ?? 0);
+        }}
+        onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+          if (event.pointerType === "mouse") touchStartX.current = event.clientX;
+        }}
+        onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
+          if (event.pointerType === "mouse") finishSwipe(event.clientX);
+        }}
+      >
+        <div className="ios-home-pages-track" style={{ transform: `translateX(-${page * 100}%)` }}>
+          {homeAppPages.map((apps, pageIndex) => (
+            <div className="ios-app-grid" key={pageIndex}>
+              {apps.map((app) => (
+                <button key={app.id} type="button" className="ios-app" onClick={(event) => onOpen(app.id, event)}>
+                  <span className={`ios-app-icon ${app.className}`}>
+                    {app.id === "fish" ? <img src="/fish-app-icon.png" alt="" /> : app.id === "snake" ? <SnakeIcon /> : app.icon}
+                  </span>
+                  <strong>{app.label}</strong>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="ios-page-dots" aria-label={`Homescreen Seite ${page + 1} von ${homeAppPages.length}`}>
+          {homeAppPages.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              className={index === page ? "active" : ""}
+              onClick={() => setPage(index)}
+              aria-label={`Seite ${index + 1}`}
+            />
+          ))}
+        </div>
       </div>
       <div className="ios-dock">
         <button type="button" className="ios-app mini" onClick={(event) => onOpen("fish", event)}>
@@ -797,6 +841,17 @@ function HomeScreen({
         </button>
       </div>
     </div>
+  );
+}
+
+function SnakeIcon() {
+  return (
+    <span className="snake-icon-art" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <b />
+    </span>
   );
 }
 
@@ -900,8 +955,8 @@ function AppScreen({
                   ? "Catering"
                   : app === "nachtbus"
                     ? "Nachtbus"
-                    : app === "settings"
-                      ? "Einstellungen"
+                    : app === "snake"
+                      ? "Snake"
                       : ".fish Player";
 
   return (
@@ -960,7 +1015,7 @@ function AppScreen({
       {app === "karaoke" && <KaraokeApp />}
       {app === "catering" && <CateringApp />}
       {app === "nachtbus" && <NachtbusApp />}
-      {app === "settings" && <SettingsApp />}
+      {app === "snake" && <SnakeApp />}
       {app === "player" && (
         <div className="ios-player-app" style={{ "--beat": beatPulse } as CSSProperties}>
           <div
@@ -1018,6 +1073,106 @@ function AppScreen({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type SnakePoint = { x: number; y: number };
+const snakeSize = 11;
+
+function samePoint(a: SnakePoint, b: SnakePoint) {
+  return a.x === b.x && a.y === b.y;
+}
+
+function nextSnakeFood(body: SnakePoint[]) {
+  for (let y = 2; y < snakeSize; y += 3) {
+    for (let x = 2; x < snakeSize; x += 2) {
+      if (!body.some((part) => part.x === x && part.y === y)) return { x, y };
+    }
+  }
+  return { x: snakeSize - 2, y: snakeSize - 2 };
+}
+
+function SnakeApp() {
+  const [snake, setSnake] = useState<SnakePoint[]>([
+    { x: 5, y: 5 },
+    { x: 4, y: 5 },
+    { x: 3, y: 5 }
+  ]);
+  const [food, setFood] = useState<SnakePoint>({ x: 8, y: 5 });
+  const [direction, setDirection] = useState<SnakePoint>({ x: 1, y: 0 });
+  const [running, setRunning] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+
+  useEffect(() => {
+    if (!running || gameOver) return;
+    const interval = window.setInterval(() => {
+      setSnake((current) => {
+        const head = current[0];
+        const nextHead = {
+          x: (head.x + direction.x + snakeSize) % snakeSize,
+          y: (head.y + direction.y + snakeSize) % snakeSize
+        };
+        if (current.some((part) => samePoint(part, nextHead))) {
+          setRunning(false);
+          setGameOver(true);
+          return current;
+        }
+        const ate = samePoint(nextHead, food);
+        const next = [nextHead, ...current];
+        if (!ate) next.pop();
+        else setFood(nextSnakeFood(next));
+        return next;
+      });
+    }, 170);
+    return () => window.clearInterval(interval);
+  }, [direction, food, gameOver, running]);
+
+  function reset() {
+    const start = [
+      { x: 5, y: 5 },
+      { x: 4, y: 5 },
+      { x: 3, y: 5 }
+    ];
+    setSnake(start);
+    setFood({ x: 8, y: 5 });
+    setDirection({ x: 1, y: 0 });
+    setGameOver(false);
+    setRunning(true);
+  }
+
+  function turn(next: SnakePoint) {
+    setRunning(true);
+    setDirection((current) => {
+      if (current.x + next.x === 0 && current.y + next.y === 0) return current;
+      return next;
+    });
+  }
+
+  return (
+    <div className="ios-snake-app">
+      <div className="snake-score-card">
+        <small>iPod Classic Mode</small>
+        <strong>{gameOver ? "Game Over" : running ? "Snake läuft" : "Snake bereit"}</strong>
+        <span>Score {Math.max(0, snake.length - 3)}</span>
+      </div>
+      <div className="phone-snake-board" aria-label="Snake Spielfeld">
+        {Array.from({ length: snakeSize * snakeSize }, (_, index) => {
+          const point = { x: index % snakeSize, y: Math.floor(index / snakeSize) };
+          const bodyIndex = snake.findIndex((part) => samePoint(part, point));
+          const isFood = samePoint(food, point);
+          return <span className={`${bodyIndex === 0 ? "head" : bodyIndex > 0 ? "body" : ""} ${isFood ? "food" : ""}`} key={index} />;
+        })}
+      </div>
+      <div className="snake-controls">
+        <button type="button" onClick={() => turn({ x: 0, y: -1 })}>▲</button>
+        <button type="button" onClick={() => turn({ x: -1, y: 0 })}>◀</button>
+        <button type="button" className="snake-main" onClick={gameOver ? reset : () => setRunning((value) => !value)}>
+          {gameOver ? "Neu" : running ? "Pause" : "Start"}
+        </button>
+        <button type="button" onClick={() => turn({ x: 1, y: 0 })}>▶</button>
+        <button type="button" onClick={() => turn({ x: 0, y: 1 })}>▼</button>
+      </div>
     </div>
   );
 }
