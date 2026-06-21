@@ -2273,9 +2273,8 @@ footer {
 
 .iphone-screen.locked {
   background:
-    radial-gradient(circle at 70% 12%, rgba(127, 251, 245, 0.22), transparent 28%),
-    radial-gradient(circle at 18% 90%, rgba(130, 160, 255, 0.32), transparent 30%),
-    linear-gradient(145deg, #1d3940, #202c3b 48%, #101a2a);
+    linear-gradient(rgba(10, 18, 26, 0.18), rgba(2, 6, 10, 0.38)),
+    url("/ios-rain-wallpaper.png") center / cover no-repeat;
 }
 
 .ios-lockscreen,
@@ -2288,7 +2287,7 @@ footer {
 .ios-lockscreen {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  padding: 15px 22px 22px;
+  padding: 15px 22px max(22px, env(safe-area-inset-bottom, 0px));
   text-shadow: 0 1px 9px rgba(0, 0, 0, 0.36);
 }
 
@@ -2411,6 +2410,8 @@ footer {
 }
 
 .lock-actions button {
+  min-width: 72px;
+  min-height: 44px;
   color: #fff;
   background: transparent;
   border: 0;
@@ -2438,11 +2439,8 @@ footer {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 22% 12%, rgba(255, 255, 255, 0.42), transparent 18%),
-    radial-gradient(circle at 78% 70%, rgba(0, 188, 255, 0.34), transparent 27%),
-    radial-gradient(circle at 48% 36%, rgba(188, 255, 245, 0.18), transparent 22%),
-    repeating-linear-gradient(140deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 17px),
-    linear-gradient(160deg, #c7dce8, #4e91b2 42%, #173f5c 72%, #0e2d47);
+    linear-gradient(rgba(42, 72, 88, 0.1), rgba(4, 11, 18, 0.2)),
+    url("/ios-rain-wallpaper.png") center / cover no-repeat;
 }
 
 .ios-weather-widget {
@@ -2523,7 +2521,7 @@ footer {
   z-index: 2;
   width: 100%;
   overflow: hidden;
-  padding-bottom: 28px;
+  padding-bottom: 34px;
   touch-action: pan-y;
 }
 
@@ -2548,23 +2546,36 @@ footer {
 .ios-page-dots {
   position: absolute;
   left: 50%;
-  bottom: 2px;
+  bottom: 0;
   display: flex;
   gap: 8px;
   transform: translateX(-50%);
 }
 
 .ios-page-dots button {
-  width: 8px;
-  height: 8px;
+  position: relative;
+  width: 34px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.44);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  background: transparent;
 }
 
-.ios-page-dots button.active {
+.ios-page-dots button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.44);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  transform: translate(-50%, -50%);
+}
+
+.ios-page-dots button.active::after {
   background: #fff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.36), 0 2px 8px rgba(0, 0, 0, 0.24);
 }
@@ -2805,6 +2816,8 @@ footer {
     inset 0 2px 8px rgba(255, 255, 255, 0.55),
     inset 0 -12px 22px rgba(45, 97, 55, 0.18),
     0 18px 28px rgba(19, 56, 32, 0.2);
+  touch-action: none;
+  user-select: none;
 }
 
 .phone-snake-board span {
@@ -2829,14 +2842,12 @@ footer {
 }
 
 .snake-controls {
-  width: min(310px, 100%);
+  width: min(220px, 100%);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
 }
 
 .snake-controls button {
-  height: 42px;
+  min-height: 46px;
   color: #fff;
   font-size: 18px;
   font-weight: 950;
@@ -2847,7 +2858,17 @@ footer {
 }
 
 .snake-controls .snake-main {
-  font-size: 13px;
+  font-size: 15px;
+}
+
+.snake-swipe-hint {
+  max-width: 310px;
+  margin: -4px 0 0;
+  color: rgba(22, 36, 58, 0.68);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .ios-app-header {
@@ -2987,7 +3008,7 @@ footer {
 
 .calendar-toolbar {
   display: grid;
-  grid-template-columns: 64px 1fr 34px;
+  grid-template-columns: 74px 1fr 44px;
   align-items: center;
   gap: 8px;
   padding: 7px;
@@ -2999,7 +3020,7 @@ footer {
 }
 
 .calendar-toolbar button {
-  min-height: 27px;
+  min-height: 44px;
   color: #fff;
   font-weight: 900;
   background: linear-gradient(#7fa8d6, #386ea8);
@@ -3060,7 +3081,7 @@ footer {
 
 .calendar-event button,
 .ios-karaoke-app button {
-  min-height: 36px;
+  min-height: 46px;
   color: #fff;
   font-weight: 950;
   background: linear-gradient(#79d5ff, #1877c7 58%, #0b5b9c);
@@ -3127,8 +3148,8 @@ footer {
 .ios-karaoke-app input,
 .ios-karaoke-app textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 10px 11px;
+  min-height: 46px;
+  padding: 12px;
   color: #172235;
   font: inherit;
   font-weight: 800;
@@ -3169,14 +3190,14 @@ footer {
 .notification-grabber {
   position: absolute;
   top: 0;
-  left: 50%;
+  left: 0;
+  right: 0;
   z-index: 26;
-  width: 150px;
+  width: 100%;
   height: 36px;
   background: transparent;
   border: 0;
   border-radius: 999px;
-  transform: translateX(-50%);
   cursor: grab;
   touch-action: none;
 }
@@ -3221,8 +3242,7 @@ footer {
 }
 
 .lockscreen-player,
-.phone-notification,
-.notification-center-head {
+.phone-notification {
   margin-top: 12px;
   background: rgba(220, 248, 241, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.48);
@@ -3244,21 +3264,6 @@ footer {
   text-transform: uppercase;
 }
 
-.notification-center-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-}
-
-.notification-center-head div {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.notification-center-head button,
 .phone-notification > button:last-child {
   color: #a92323;
   font-weight: 950;
@@ -3269,6 +3274,7 @@ footer {
 .phone-notifications {
   display: grid;
   gap: 10px;
+  margin-top: 12px;
 }
 
 .phone-notification {
@@ -3317,6 +3323,85 @@ footer {
   font-weight: 900;
 }
 
+.notification-clear-all {
+  justify-self: center;
+  min-height: 44px;
+  margin: 12px auto 0;
+  padding: 8px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 950;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.phone-push-banner {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  right: 12px;
+  z-index: 24;
+  display: grid;
+  grid-template-columns: 1fr 34px;
+  gap: 8px;
+  padding: 9px 10px;
+  color: #102035;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.74), rgba(218, 244, 239, 0.72)),
+    rgba(224, 247, 242, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 18px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  animation: phone-push-drop 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.phone-push-banner button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+}
+
+.phone-push-banner button:first-child {
+  display: grid;
+  gap: 2px;
+  min-height: 54px;
+  text-align: left;
+}
+
+.phone-push-banner button:last-child {
+  min-width: 34px;
+  min-height: 44px;
+  color: rgba(16, 32, 53, 0.56);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.phone-push-banner small {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(16, 32, 53, 0.62);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.phone-push-banner strong {
+  font-size: 15px;
+  line-height: 1.12;
+}
+
+.phone-push-banner span {
+  color: rgba(16, 32, 53, 0.72);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+@keyframes phone-push-drop {
+  from { transform: translateY(-110%); opacity: 0.25; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 @keyframes notification-drop {
   from {
     transform: translateY(-92%);
@@ -3362,7 +3447,10 @@ footer {
 .map-pin-card a {
   justify-self: start;
   margin-top: 8px;
-  padding: 7px 11px;
+  min-height: 44px;
+  display: inline-grid;
+  place-items: center;
+  padding: 9px 13px;
   color: #fff;
   font-size: 12px;
   font-weight: 950;
@@ -3387,8 +3475,8 @@ footer {
   position: absolute;
   left: 50%;
   bottom: clamp(2px, 1.6svh, 9px);
-  width: clamp(36px, 6.2svh, 44px);
-  height: clamp(36px, 6.2svh, 44px);
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   background: linear-gradient(#242830, #07090c);
@@ -3485,7 +3573,8 @@ footer {
   }
 
   .ios-app strong {
-    font-size: 19px;
+    font-size: 13px;
+    line-height: 1.08;
   }
 
   .passcode-grid {
@@ -3499,6 +3588,57 @@ footer {
 
   .passcode-grid strong {
     font-size: 42px;
+  }
+}
+
+@media (max-width: 520px) and (max-height: 720px) {
+  .ios-homescreen {
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-bottom: 88px;
+  }
+
+  .ios-weather-widget {
+    min-height: 88px;
+    grid-template-columns: 1fr 64px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+  }
+
+  .ios-weather-widget strong {
+    font-size: 30px;
+  }
+
+  .ios-weather-widget ul {
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  .ios-home-pages {
+    padding-bottom: 30px;
+  }
+
+  .ios-app-grid {
+    gap: 12px 8px;
+    min-height: min(266px, calc(100svh - 302px));
+  }
+
+  .ios-dock {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    gap: 18px;
+  }
+
+  .ios-page-dots {
+    bottom: 1px;
+  }
+
+  .iphone-device {
+    padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .iphone-home-button {
+    bottom: calc(5px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -5806,7 +5946,7 @@ button.delete-post-button:hover,
 }
 
 /* =========================================================================
-   iOS 4 authenticity pass 1 — lock screen, gel icons, app-open, Nachtbus
+   iOS 4 authenticity pass 1 — lock screen, gel icons, app-open
    ========================================================================= */
 
 /* --- Status glyphs (signal + battery) shared by lock + home --- */
@@ -5962,15 +6102,6 @@ button.delete-post-button:hover,
   z-index: 3;
 }
 
-.ios-app-icon.nachtbus {
-  color: #eaf3ff;
-  font-size: 38px;
-  background:
-    radial-gradient(circle at 74% 22%, rgba(255, 255, 255, 0.85), transparent 16%),
-    radial-gradient(circle at 30% 70%, rgba(120, 180, 255, 0.4), transparent 40%),
-    linear-gradient(150deg, #1b2c4a, #25406d 55%, #0c1830);
-}
-
 /* --- App-open zoom (tap an icon, the app grows into place) --- */
 .ios-app-screen {
   animation: app-open 0.34s cubic-bezier(0.16, 1, 0.3, 1);
@@ -5980,131 +6111,6 @@ button.delete-post-button:hover,
 @keyframes app-open {
   from { opacity: 0; transform: scale(0.84); }
   to { opacity: 1; transform: scale(1); }
-}
-
-/* --- Nachtbus (transit) app --- */
-.ios-nachtbus-app {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 28px;
-  overflow: auto;
-  color: #14233a;
-}
-
-.nachtbus-sign {
-  display: grid;
-  gap: 2px;
-  padding: 14px 16px;
-  color: #fff7d6;
-  text-align: center;
-  background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 10px),
-    linear-gradient(150deg, #15233c, #243a5e 60%, #101b30);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 18px rgba(0, 0, 0, 0.22);
-}
-
-.nachtbus-sign small {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
-
-.nachtbus-sign strong {
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.nachtbus-sign span {
-  font-size: 13px;
-  opacity: 0.86;
-}
-
-.nachtbus-stops {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.nachtbus-stops div {
-  display: grid;
-  gap: 3px;
-  padding: 9px 8px;
-  background: linear-gradient(#ffffff, #e8eff7);
-  border: 1px solid rgba(120, 145, 175, 0.45);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 #fff;
-}
-
-.nachtbus-stops b {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6a7790;
-}
-
-.nachtbus-stops span {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ios-nachtbus-app label {
-  display: grid;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #3a4a63;
-}
-
-.ios-nachtbus-app input {
-  padding: 11px 12px;
-  font-size: 15px;
-  color: #14233a;
-  background: linear-gradient(#ffffff, #eef3f9);
-  border: 1px solid rgba(120, 145, 175, 0.6);
-  border-radius: 11px;
-  box-shadow: inset 0 1px 3px rgba(23, 40, 68, 0.16);
-}
-
-.nachtbus-route-button,
-.nachtbus-link {
-  display: block;
-  padding: 13px;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 800;
-  border-radius: 12px;
-}
-
-.nachtbus-route-button {
-  color: #fff;
-  background: linear-gradient(#5fb6f4, #2179c9 52%, #1466b3);
-  border: 1px solid #1a5da0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 6px 14px rgba(20, 102, 179, 0.34);
-}
-
-.nachtbus-route-button.disabled {
-  pointer-events: none;
-  opacity: 0.5;
-  filter: grayscale(0.5);
-}
-
-.nachtbus-link {
-  color: #28456e;
-  background: linear-gradient(#ffffff, #dde7f2);
-  border: 1px solid rgba(120, 145, 175, 0.6);
-  box-shadow: inset 0 1px 0 #fff;
-}
-
-.nachtbus-hint {
-  margin: 0;
-  font-size: 12px;
-  text-align: center;
-  color: #6a7790;
 }
 
 /* =========================================================================
@@ -6139,7 +6145,6 @@ body:has(.fish-phone-page) .global-contact-footer {
 /* Momentum + rubber-band inside scrollable app surfaces */
 .ios-app-screen,
 .ios-photos-app,
-.ios-nachtbus-app,
 .ios-catering-app,
 .ios-dresscode-app,
 .ios-karaoke-app,
@@ -6175,7 +6180,7 @@ body:has(.fish-phone-page) .global-contact-footer {
 }
 
 .iphone-home-button {
-  bottom: calc(clamp(2px, 1.6svh, 9px) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(5px, 1.8svh, 12px) + env(safe-area-inset-bottom, 0px));
 }
 
 /* --- Boot sequence: black → logo + spinner → reveal --- */
@@ -6296,13 +6301,13 @@ body:has(.fish-phone-page) .global-contact-footer {
 /* --- App header back button (consistent return path) --- */
 .ios-app-back {
   position: absolute;
-  left: 6px;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 32px;
+  width: 48px;
+  height: 44px;
   font-size: 30px;
   line-height: 1;
   color: #1f5fa6;
@@ -6317,11 +6322,12 @@ body:has(.fish-phone-page) .global-contact-footer {
   top: 0;
   left: 0;
   right: 0;
-  height: calc(30px + env(safe-area-inset-top, 0px));
+  height: calc(44px + env(safe-area-inset-top, 0px));
   z-index: 22;
   background: transparent;
   border: 0;
   cursor: grab;
+  touch-action: none;
 }
 
 .notification-grabber::after {
@@ -6354,8 +6360,7 @@ body:has(.fish-phone-page) .global-contact-footer {
 }
 
 .lockscreen-player,
-.phone-notification,
-.notification-center-head {
+.phone-notification {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 24px rgba(0, 0, 0, 0.3);
@@ -6370,7 +6375,6 @@ body:has(.fish-phone-page) .global-contact-footer {
   color: #eef4fa;
 }
 
-.ios-notification-center .notification-center-head strong,
 .ios-notification-center .phone-notification strong {
   color: #fff;
 }
@@ -6839,4 +6843,41 @@ body:has(.fish-phone-page) .global-contact-footer {
     inset 0 -10px 16px rgba(0, 0, 0, 0.12),
     0 2px 2px rgba(0, 0, 0, 0.18),
     0 8px 16px rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 520px) {
+  .ios-page-dots button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 520px) and (max-height: 720px) {
+  .ios-weather-widget {
+    min-height: 88px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+  }
+
+  .weather-info strong {
+    font-size: 30px;
+  }
+
+  .weather-info small,
+  .weather-info span,
+  .ios-weather-widget ul {
+    font-size: 10px;
+  }
+
+  .ios-weather-widget ul {
+    margin-top: 4px;
+  }
+
+  .ios-home-pages {
+    padding-bottom: 34px;
+  }
+
+  .ios-app-grid {
+    min-height: min(266px, calc(100svh - 302px));
+  }
 }

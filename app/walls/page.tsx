@@ -61,6 +61,7 @@ const replyPrefix = "__reply__:";
 const clearedNotificationsStorageKey = "fish-cleared-notifications-v2";
 const clearedNotificationsCookieKey = "fish_cleared_notifications";
 const seenNotificationsStorageKey = "fish-seen-notifications-v1";
+const seenNotificationsCookieKey = "fish_seen_notifications";
 const reactionOptions = [
   { key: "thumbs-up", label: "Daumen hoch" },
   { key: "wow", label: "Erstaunt" },
@@ -465,12 +466,12 @@ export default function WallsPage() {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(seenNotificationsStorageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSeenNotificationIds(parsed.filter((id) => typeof id === "string"));
-        }
-      }
+      const cookieMatch = document.cookie.match(new RegExp(`(?:^|; )${seenNotificationsCookieKey}=([^;]+)`));
+      const parsedStorage = stored ? JSON.parse(stored) : [];
+      const parsedCookie = cookieMatch ? JSON.parse(decodeURIComponent(cookieMatch[1])) : [];
+      const merged = [...(Array.isArray(parsedStorage) ? parsedStorage : []), ...(Array.isArray(parsedCookie) ? parsedCookie : [])]
+        .filter((id) => typeof id === "string");
+      setSeenNotificationIds([...new Set(merged)]);
     } catch {
       setSeenNotificationIds([]);
     }
@@ -479,6 +480,7 @@ export default function WallsPage() {
   useEffect(() => {
     try {
       window.localStorage.setItem(seenNotificationsStorageKey, JSON.stringify(seenNotificationIds));
+      document.cookie = `${seenNotificationsCookieKey}=${encodeURIComponent(JSON.stringify(seenNotificationIds))}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
       // Reading notifications still works for the session if storage is blocked.
     }

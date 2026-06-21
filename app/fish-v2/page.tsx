@@ -19,7 +19,7 @@ function fireAquaAlert(title: string, body: string) {
   }
 }
 
-type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "nachtbus" | "snake";
+type PhoneApp = "home" | "photos" | "fish" | "maps" | "player" | "calendar" | "dresscode" | "karaoke" | "catering" | "snake";
 type GalleryPhoto = { url: string; caption?: string; uploadedAt?: string };
 type Weather = { temperature: number; label: string };
 type WallProfile = { id: string; name: string; handle: string; avatar?: string; createdAt: string };
@@ -38,19 +38,22 @@ type PhoneNotification = {
 const pinCode = "2406";
 const siteCookieName = "kimon_v2_access";
 const siteCookieValue = "fish-v2-ok";
+const phoneClearedNotificationsKey = "fish-phone-cleared-notifications-v1";
+const phoneClearedNotificationsCookie = "fish_phone_cleared_notifications";
+const phoneSeenNotificationsKey = "fish-phone-seen-notifications-v1";
+const phoneSeenNotificationsCookie = "fish_phone_seen_notifications";
 const appIcons: Array<{ id: PhoneApp; label: string; className: string; icon: string }> = [
   { id: "calendar", label: "Kalender", className: "calendar", icon: "27" },
   { id: "photos", label: "Fotos", className: "photos", icon: "✿" },
   { id: "fish", label: ".fish", className: "fish", icon: "" },
   { id: "maps", label: "Maps", className: "maps", icon: "⌖" },
-  { id: "nachtbus", label: "Nachtbus", className: "nachtbus", icon: "☾" },
   { id: "dresscode", label: "Dresscode", className: "dresscode", icon: "◆" },
   { id: "karaoke", label: "Karaoke", className: "karaoke", icon: "♫" },
   { id: "catering", label: "Catering", className: "catering", icon: "☕" },
   { id: "player", label: "Player", className: "player", icon: "♪" },
   { id: "snake", label: "Snake", className: "snake", icon: "" }
 ];
-const homeAppPages = [appIcons.slice(0, 9), appIcons.slice(9)];
+const homeAppPages = [appIcons.slice(0, 8), appIcons.slice(8)];
 
 const keypad = [
   ["1", ""],
@@ -130,6 +133,8 @@ export default function FishV2Gate() {
   const [wallComments, setWallComments] = useState<WallComment[]>([]);
   const [wallFollows, setWallFollows] = useState<WallFollow[]>([]);
   const [clearedNotifications, setClearedNotifications] = useState<string[]>([]);
+  const [seenNotifications, setSeenNotifications] = useState<string[]>([]);
+  const [phonePush, setPhonePush] = useState<PhoneNotification | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -209,6 +214,10 @@ export default function FishV2Gate() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 12);
   }, [activeProfile, clearedNotifications, profiles, wallComments, wallFollows, wallPosts]);
+  const unseenPhoneNotifications = useMemo(
+    () => phoneNotifications.filter((note) => !seenNotifications.includes(note.id)),
+    [phoneNotifications, seenNotifications]
+  );
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 15_000);
@@ -270,13 +279,23 @@ export default function FishV2Gate() {
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem("fish-cleared-notifications-v2") || "";
-      const cookieMatch = document.cookie.match(/(?:^|; )fish_cleared_notifications=([^;]+)/);
+      const stored = window.localStorage.getItem(phoneClearedNotificationsKey) || "";
+      const cookieMatch = document.cookie.match(new RegExp(`(?:^|; )${phoneClearedNotificationsCookie}=([^;]+)`));
       const fromStorage = stored ? JSON.parse(stored) : [];
       const fromCookie = cookieMatch ? JSON.parse(decodeURIComponent(cookieMatch[1])) : [];
       setClearedNotifications([...new Set([...(Array.isArray(fromStorage) ? fromStorage : []), ...(Array.isArray(fromCookie) ? fromCookie : [])])]);
     } catch {
       setClearedNotifications([]);
+    }
+
+    try {
+      const stored = window.localStorage.getItem(phoneSeenNotificationsKey) || "";
+      const cookieMatch = document.cookie.match(new RegExp(`(?:^|; )${phoneSeenNotificationsCookie}=([^;]+)`));
+      const fromStorage = stored ? JSON.parse(stored) : [];
+      const fromCookie = cookieMatch ? JSON.parse(decodeURIComponent(cookieMatch[1])) : [];
+      setSeenNotifications([...new Set([...(Array.isArray(fromStorage) ? fromStorage : []), ...(Array.isArray(fromCookie) ? fromCookie : [])])]);
+    } catch {
+      setSeenNotifications([]);
     }
   }, []);
 
@@ -284,17 +303,33 @@ export default function FishV2Gate() {
     const next = [...new Set(ids)];
     setClearedNotifications(next);
     try {
-      window.localStorage.setItem("fish-cleared-notifications-v2", JSON.stringify(next));
-      document.cookie = `fish_cleared_notifications=${encodeURIComponent(JSON.stringify(next))}; path=/; max-age=31536000; SameSite=Lax`;
+      window.localStorage.setItem(phoneClearedNotificationsKey, JSON.stringify(next));
+      document.cookie = `${phoneClearedNotificationsCookie}=${encodeURIComponent(JSON.stringify(next))}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
       // If browser storage is blocked, the notification disappears for this session.
     }
   }
 
-  useEffect(() => {
-    if (!pushEnabled || !phoneNotifications.length || typeof Notification === "undefined") return;
+  function saveSeenNotifications(ids: string[]) {
+    const next = [...new Set(ids)];
+    setSeenNotifications(next);
+    try {
+      window.localStorage.setItem(phoneSeenNotificationsKey, JSON.stringify(next));
+      document.cookie = `${phoneSeenNotificationsCookie}=${encodeURIComponent(JSON.stringify(next))}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {
+      // Session-only fallback.
+    }
+  }
 
-    const newest = phoneNotifications[0];
+  function markNotificationsSeen(ids: string[]) {
+    if (!ids.length) return;
+    saveSeenNotifications([...seenNotifications, ...ids]);
+  }
+
+  useEffect(() => {
+    if (!pushEnabled || !unseenPhoneNotifications.length || typeof Notification === "undefined") return;
+
+    const newest = unseenPhoneNotifications[0];
     if (notifiedIdsRef.current.has(newest.id)) return;
     notifiedIdsRef.current.add(newest.id);
 
@@ -314,17 +349,30 @@ export default function FishV2Gate() {
         })
         .catch(() => new Notification(".fish", { body: newest.text, icon: "/fish-app-icon.png", tag: newest.id }));
     }
-  }, [phoneNotifications, pushEnabled]);
+  }, [pushEnabled, unseenPhoneNotifications]);
 
   useEffect(() => {
-    const newest = phoneNotifications[0];
+    const newest = unseenPhoneNotifications[0];
     if (!newest) return;
     if (lastNotifIdRef.current && lastNotifIdRef.current !== newest.id) {
       playTritone();
       vibrate([30, 40, 30]);
     }
     lastNotifIdRef.current = newest.id;
-  }, [phoneNotifications]);
+  }, [unseenPhoneNotifications]);
+
+  useEffect(() => {
+    const newest = unseenPhoneNotifications[0];
+    if (!newest || activeApp === "fish" || notificationCenterOpen || !unlocked) return;
+    setPhonePush(newest);
+    const timer = window.setTimeout(() => setPhonePush(null), 5200);
+    return () => window.clearTimeout(timer);
+  }, [activeApp, notificationCenterOpen, unlocked, unseenPhoneNotifications]);
+
+  useEffect(() => {
+    if (!notificationCenterOpen) return;
+    markNotificationsSeen(phoneNotifications.map((note) => note.id));
+  }, [notificationCenterOpen, phoneNotifications]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -518,7 +566,39 @@ export default function FishV2Gate() {
     }
   }
 
+  function moveNotificationDrag(event: PointerEvent<HTMLButtonElement>) {
+    const startY = dragStartYRef.current;
+    if (startY === null) return;
+    if (event.clientY - startY > 36) {
+      dragStartYRef.current = null;
+      setNotificationCenterOpen(true);
+    }
+  }
+
+  function startNotificationTouch(event: TouchEvent<HTMLButtonElement>) {
+    dragStartYRef.current = event.touches[0]?.clientY ?? null;
+  }
+
+  function moveNotificationTouch(event: TouchEvent<HTMLButtonElement>) {
+    const startY = dragStartYRef.current;
+    if (startY === null) return;
+    const y = event.touches[0]?.clientY ?? startY;
+    if (y - startY > 36) {
+      dragStartYRef.current = null;
+      setNotificationCenterOpen(true);
+    }
+  }
+
+  function finishNotificationTouch(event: TouchEvent<HTMLButtonElement>) {
+    const startY = dragStartYRef.current;
+    dragStartYRef.current = null;
+    if (startY === null) return;
+    const y = event.changedTouches[0]?.clientY ?? startY;
+    if (y - startY > 30) setNotificationCenterOpen(true);
+  }
+
   function openNotification(notification: PhoneNotification) {
+    markNotificationsSeen([notification.id]);
     const params = new URLSearchParams();
     if (notification.profileId) params.set("profile", notification.profileId);
     if (notification.postId) params.set("post", notification.postId);
@@ -577,14 +657,31 @@ export default function FishV2Gate() {
                     now={now}
                   />
                 )}
-                <button
-                  className="notification-grabber"
-                  type="button"
-                  onPointerDown={startNotificationDrag}
-                  onPointerUp={finishNotificationDrag}
-                  onClick={() => setNotificationCenterOpen((value) => !value)}
-                  aria-label="Benachrichtigungen öffnen"
-                />
+                {!notificationCenterOpen && (
+                  <button
+                    className="notification-grabber"
+                    type="button"
+                    onPointerDown={startNotificationDrag}
+                    onPointerMove={moveNotificationDrag}
+                    onPointerUp={finishNotificationDrag}
+                    onTouchStart={startNotificationTouch}
+                    onTouchMove={moveNotificationTouch}
+                    onTouchEnd={finishNotificationTouch}
+                    onClick={() => setNotificationCenterOpen((value) => !value)}
+                    aria-label="Benachrichtigungen öffnen"
+                  />
+                )}
+                {phonePush && !notificationCenterOpen && activeApp !== "fish" && (
+                  <PhonePushBanner
+                    notification={phonePush}
+                    now={now}
+                    onOpen={openNotification}
+                    onDismiss={() => {
+                      markNotificationsSeen([phonePush.id]);
+                      setPhonePush(null);
+                    }}
+                  />
+                )}
                 {aquaAlert && <AquaAlert title={aquaAlert.title} body={aquaAlert.body} onClose={() => setAquaAlert(null)} />}
                 {notificationCenterOpen && (
                   <NotificationCenter
@@ -595,9 +692,11 @@ export default function FishV2Gate() {
                     isPlaying={isPlaying}
                     onOpen={openNotification}
                     onDismiss={(id) => saveClearedNotifications([...clearedNotifications, id])}
-                    onClearAll={() => saveClearedNotifications([...clearedNotifications, ...phoneNotifications.map((note) => note.id)])}
-                    onEnablePush={enablePushNotifications}
-                    pushEnabled={pushEnabled}
+                    onClearAll={() => {
+                      const ids = phoneNotifications.map((note) => note.id);
+                      saveClearedNotifications([...clearedNotifications, ...ids]);
+                      saveSeenNotifications([...seenNotifications, ...ids]);
+                    }}
                   />
                 )}
               </>
@@ -950,11 +1049,9 @@ function AppScreen({
             : app === "dresscode"
               ? "Dresscode"
               : app === "karaoke"
-                ? "Karaoke"
-                : app === "catering"
-                  ? "Catering"
-                  : app === "nachtbus"
-                    ? "Nachtbus"
+                  ? "Karaoke"
+                  : app === "catering"
+                    ? "Catering"
                     : app === "snake"
                       ? "Snake"
                       : ".fish Player";
@@ -1014,7 +1111,6 @@ function AppScreen({
       {app === "dresscode" && <DresscodeApp />}
       {app === "karaoke" && <KaraokeApp />}
       {app === "catering" && <CateringApp />}
-      {app === "nachtbus" && <NachtbusApp />}
       {app === "snake" && <SnakeApp />}
       {app === "player" && (
         <div className="ios-player-app" style={{ "--beat": beatPulse } as CSSProperties}>
@@ -1103,6 +1199,7 @@ function SnakeApp() {
   const [direction, setDirection] = useState<SnakePoint>({ x: 1, y: 0 });
   const [running, setRunning] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const swipeStartRef = useRef<SnakePoint | null>(null);
 
   useEffect(() => {
     if (!running || gameOver) return;
@@ -1149,6 +1246,24 @@ function SnakeApp() {
     });
   }
 
+  function startSwipe(x: number, y: number) {
+    swipeStartRef.current = { x, y };
+  }
+
+  function finishSnakeSwipe(x: number, y: number) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const dx = x - start.x;
+    const dy = y - start.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) {
+      setRunning((value) => !value);
+      return;
+    }
+    if (Math.abs(dx) > Math.abs(dy)) turn({ x: dx > 0 ? 1 : -1, y: 0 });
+    else turn({ x: 0, y: dy > 0 ? 1 : -1 });
+  }
+
   return (
     <div className="ios-snake-app">
       <div className="snake-score-card">
@@ -1156,7 +1271,18 @@ function SnakeApp() {
         <strong>{gameOver ? "Game Over" : running ? "Snake läuft" : "Snake bereit"}</strong>
         <span>Score {Math.max(0, snake.length - 3)}</span>
       </div>
-      <div className="phone-snake-board" aria-label="Snake Spielfeld">
+      <div
+        className="phone-snake-board"
+        aria-label="Snake Spielfeld"
+        onTouchStart={(event) => startSwipe(event.touches[0]?.clientX ?? 0, event.touches[0]?.clientY ?? 0)}
+        onTouchEnd={(event) => finishSnakeSwipe(event.changedTouches[0]?.clientX ?? 0, event.changedTouches[0]?.clientY ?? 0)}
+        onPointerDown={(event) => {
+          if (event.pointerType === "mouse") startSwipe(event.clientX, event.clientY);
+        }}
+        onPointerUp={(event) => {
+          if (event.pointerType === "mouse") finishSnakeSwipe(event.clientX, event.clientY);
+        }}
+      >
         {Array.from({ length: snakeSize * snakeSize }, (_, index) => {
           const point = { x: index % snakeSize, y: Math.floor(index / snakeSize) };
           const bodyIndex = snake.findIndex((part) => samePoint(part, point));
@@ -1164,14 +1290,11 @@ function SnakeApp() {
           return <span className={`${bodyIndex === 0 ? "head" : bodyIndex > 0 ? "body" : ""} ${isFood ? "food" : ""}`} key={index} />;
         })}
       </div>
+      <p className="snake-swipe-hint">Wische über das Feld, um die Richtung zu ändern. Tippen startet oder pausiert.</p>
       <div className="snake-controls">
-        <button type="button" onClick={() => turn({ x: 0, y: -1 })}>▲</button>
-        <button type="button" onClick={() => turn({ x: -1, y: 0 })}>◀</button>
         <button type="button" className="snake-main" onClick={gameOver ? reset : () => setRunning((value) => !value)}>
           {gameOver ? "Neu" : running ? "Pause" : "Start"}
         </button>
-        <button type="button" onClick={() => turn({ x: 1, y: 0 })}>▶</button>
-        <button type="button" onClick={() => turn({ x: 0, y: 1 })}>▼</button>
       </div>
     </div>
   );
@@ -1316,73 +1439,6 @@ function CateringApp() {
   );
 }
 
-function NachtbusApp() {
-  const [destination, setDestination] = useState("");
-  const [time, setTime] = useState("01:00");
-
-  const start = "Wendelinstraße 94, Aachen";
-  const encodedStart = encodeURIComponent(start);
-  const encodedDestination = encodeURIComponent(destination.trim());
-  const [hourPart, minutePart] = time.split(":").map(Number);
-  const routeHour = Number.isFinite(hourPart) ? hourPart : 1;
-  const routeMinute = Number.isFinite(minutePart) ? minutePart : 0;
-  // Before 19:00 counts as the early morning after the party (next day).
-  const routeDate = new Date(2026, 5, routeHour >= 19 ? 27 : 28, routeHour, routeMinute);
-  const departureTime = Math.floor(routeDate.getTime() / 1000);
-  const mapsRouteUrl = destination.trim()
-    ? `https://www.google.com/maps/dir/?api=1&origin=${encodedStart}&destination=${encodedDestination}&travelmode=transit&departure_time=${departureTime}`
-    : "";
-
-  return (
-    <div className="ios-nachtbus-app">
-      <div className="nachtbus-sign">
-        <small>ASEAG Nachtbus</small>
-        <strong>Heimweg planen</strong>
-        <span>Start ist die Party. Sag uns Ziel und Uhrzeit.</span>
-      </div>
-      <div className="nachtbus-stops">
-        <div>
-          <b>Start</b>
-          <span>Wendelinstraße 94</span>
-        </div>
-        <div>
-          <b>Haltestelle</b>
-          <span>Brand Steinbrück</span>
-        </div>
-        <div>
-          <b>Modus</b>
-          <span>Nachtbus / Taxi-Backup</span>
-        </div>
-      </div>
-      <label>
-        Zieladresse
-        <input
-          value={destination}
-          onChange={(event) => setDestination(event.target.value)}
-          placeholder="z. B. Aachen Hbf oder deine Adresse"
-        />
-      </label>
-      <label>
-        Losgehen gegen
-        <input type="time" value={time} onChange={(event) => setTime(event.target.value)} aria-label="Uhrzeit für den Heimweg" />
-      </label>
-      <a
-        className={`nachtbus-route-button ${mapsRouteUrl ? "" : "disabled"}`}
-        href={mapsRouteUrl || undefined}
-        target="_blank"
-        rel="noreferrer"
-        aria-disabled={!mapsRouteUrl}
-      >
-        Route in Google Maps
-      </a>
-      <a className="nachtbus-link" href="https://www.aseag.de/fahrplan/auskunft" target="_blank" rel="noreferrer">
-        ASEAG Fahrplan öffnen
-      </a>
-      <p className="nachtbus-hint">Tipp: Geplante Uhrzeit {time} Uhr ab der Party-Adresse.</p>
-    </div>
-  );
-}
-
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
   return (
     <button
@@ -1484,6 +1540,33 @@ function AquaAlert({ title, body, onClose }: { title: string; body: string; onCl
   );
 }
 
+function PhonePushBanner({
+  notification,
+  now,
+  onOpen,
+  onDismiss
+}: {
+  notification: PhoneNotification;
+  now: Date;
+  onOpen: (notification: PhoneNotification) => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="phone-push-banner" role="status">
+      <button type="button" onClick={() => onOpen(notification)}>
+        <small>
+          .fish <i>{relativeTime(notification.createdAt, now)}</i>
+        </small>
+        <strong>{notification.text}</strong>
+        <span>{notification.detail}</span>
+      </button>
+      <button type="button" onClick={onDismiss} aria-label="Banner schließen">
+        ×
+      </button>
+    </div>
+  );
+}
+
 function NotificationCenter({
   now,
   notifications,
@@ -1492,9 +1575,7 @@ function NotificationCenter({
   isPlaying,
   onOpen,
   onDismiss,
-  onClearAll,
-  onEnablePush,
-  pushEnabled
+  onClearAll
 }: {
   now: Date;
   notifications: PhoneNotification[];
@@ -1504,8 +1585,6 @@ function NotificationCenter({
   onOpen: (notification: PhoneNotification) => void;
   onDismiss: (id: string) => void;
   onClearAll: () => void;
-  onEnablePush: () => void;
-  pushEnabled: boolean;
 }) {
   return (
     <div className="ios-notification-center">
@@ -1517,19 +1596,6 @@ function NotificationCenter({
         <span>103.7 .fish FM</span>
         <strong>{radioStarted ? (displaySlot.kind === "host" ? "Moderation" : `${displaySlot.title} - ${displaySlot.artist}`) : "Radio bereit"}</strong>
         <small>{isPlaying ? "On Air" : "Pause"}</small>
-      </div>
-      <div className="notification-center-head">
-        <strong>.fish Benachrichtigungen</strong>
-        <div>
-          <button type="button" onClick={onEnablePush}>
-            {pushEnabled ? "push an" : "push aktivieren"}
-          </button>
-          {notifications.length > 0 && (
-            <button type="button" onClick={onClearAll}>
-              clear all
-            </button>
-          )}
-        </div>
       </div>
       <div className="phone-notifications">
         {notifications.length ? (
@@ -1549,6 +1615,11 @@ function NotificationCenter({
           <p>Keine neuen Nachrichten.</p>
         )}
       </div>
+      {notifications.length > 0 && (
+        <button className="notification-clear-all" type="button" onClick={onClearAll}>
+          alle löschen
+        </button>
+      )}
     </div>
   );
 }
