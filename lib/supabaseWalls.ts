@@ -136,7 +136,7 @@ function toProfile(row: ProfileRow): SupabaseProfile {
     song: row.song,
     theme: row.theme,
     pattern: row.pattern || "aqua",
-    stickerPack: row.sticker_pack || "party",
+    stickerPack: row.sticker_pack || "fish",
     headline: row.headline || "Mein Feed",
     glitter: Boolean(row.glitter),
     backgroundColor: row.background_color || "#dcecff",

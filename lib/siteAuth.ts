@@ -1,3 +1,3 @@
-export const SITE_COOKIE_NAME = "kimon_v2_access";
-export const SITE_COOKIE_VALUE = "fish-v2-ok";
-export const SITE_PASSWORD = process.env.SITE_PASSWORD || "2406";
+export const SITE_COOKIE_NAME = "fish_site_access";
+export const SITE_COOKIE_VALUE = "fish-ok";
+export const SITE_PASSWORD = process.env.SITE_PASSWORD || "";

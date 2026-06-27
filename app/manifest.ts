@@ -1,17 +1,14 @@
 import type { MetadataRoute } from "next";
 
-// Makes the site installable as a standalone "app" on the home screen.
-// Tapping the installed icon launches it fullscreen, with no browser chrome —
-// the phone becomes a real app on the guest's real phone.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Kimon — 23. Geburtstag",
-    short_name: "Kimon",
-    description: "Das geheime Telefon zu Kimons 23. Geburtstag.",
-    start_url: "/fish-v2",
+    name: ".fish",
+    short_name: ".fish",
+    description: ".fish for Friends only.",
+    start_url: "/walls",
     scope: "/",
     display: "standalone",
-    orientation: "portrait",
+    orientation: "any",
     background_color: "#05080f",
     theme_color: "#0a1320",
     icons: [

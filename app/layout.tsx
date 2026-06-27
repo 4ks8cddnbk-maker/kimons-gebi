@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kimon",
-  description: "Einladung zu Kimons 23. Geburtstag am 27.06.2026.",
+  title: ".fish",
+  description: ".fish for Friends only.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Kimon"
+    title: ".fish"
   },
   icons: {
     icon: "/fish-app-icon.png",
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
   themeColor: "#0a1320"
 };
